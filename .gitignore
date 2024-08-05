@@ -1,0 +1,10 @@
+/build-*
+/xcode*
+!/xcode-cloud/ci_scripts
+/.swiftpm
+/.swift
+/.vscode
+/.idea
+.DS_Store
+/build/
+/cmake-build-*
