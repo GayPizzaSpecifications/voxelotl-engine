@@ -23,9 +23,12 @@ public class Application {
     }
 
     // Create SDL window
-    var windowFlags = SDL_WindowFlags(SDL_WINDOW_HIGH_PIXEL_DENSITY)
+    var windowFlags = SDL_WindowFlags(0)
     if (cfg.flags.contains(.resizable)) {
       windowFlags |= SDL_WindowFlags(SDL_WINDOW_RESIZABLE)
+    }
+    if (cfg.flags.contains(.highDPI)) {
+      windowFlags |= SDL_WindowFlags(SDL_WINDOW_HIGH_PIXEL_DENSITY)
     }
     window = SDL_CreateWindow(cfg.title, cfg.width, cfg.height, windowFlags)
     guard window != nil else {
@@ -134,6 +137,7 @@ public struct ApplicationConfiguration {
     }
 
     static let resizable = Flags(rawValue: 1 << 0)
+    static let highDPI = Flags(rawValue: 1 << 1)
   }
 
   public enum VSyncMode {

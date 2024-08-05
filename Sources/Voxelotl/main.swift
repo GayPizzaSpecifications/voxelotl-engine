@@ -5,7 +5,7 @@ let app = Application(
   width: 1280,
   height: 720,
   title: "Voxelotl Demo",
-  flags: .resizable,
+  flags: [ .resizable, .highDPI ],
   vsyncMode: .on(interval: 1)))
 
 exit(app.run())
