@@ -11,7 +11,6 @@ public class Application {
   private var lastCounter: UInt64 = 0
   private var fpsCalculator = FPSCalculator()
 
-  private var stderr = FileHandle.standardError
 
   public init(configuration: ApplicationConfiguration) {
     self.cfg = configuration
@@ -19,7 +18,7 @@ public class Application {
 
   private func initialize() -> ApplicationExecutionState {
     guard SDL_Init(SDL_INIT_VIDEO) >= 0 else {
-      print("SDL_Init() error: \(String(cString: SDL_GetError()))", to: &stderr)
+      printErr("SDL_Init() error: \(String(cString: SDL_GetError()))")
       return .exitFailure
     }
 
@@ -33,7 +32,7 @@ public class Application {
     }
     window = SDL_CreateWindow(cfg.title, cfg.width, cfg.height, windowFlags)
     guard window != nil else {
-      print("SDL_CreateWindow() error: \(String(cString: SDL_GetError()))", to: &stderr)
+      printErr("SDL_CreateWindow() error: \(String(cString: SDL_GetError()))")
       return .exitFailure
     }
 
@@ -44,16 +43,16 @@ public class Application {
       layer.displaySyncEnabled = cfg.vsyncMode == .off ? false : true
       self.renderer = try Renderer(layer: layer)
     } catch RendererError.initFailure(let message) {
-      print("Renderer init error: \(message)", to: &stderr)
+      printErr("Renderer init error: \(message)")
       return .exitFailure
     } catch {
-      print("Renderer init error: unexpected error", to: &stderr)
+      printErr("Renderer init error: unexpected error")
     }
 
     // Get window metrics
     var backBufferWidth: Int32 = 0, backBufferHeight: Int32 = 0
     guard SDL_GetWindowSizeInPixels(window, &backBufferWidth, &backBufferHeight) >= 0 else {
-      print("SDL_GetWindowSizeInPixels() error: \(String(cString: SDL_GetError()))", to: &stderr)
+      printErr("SDL_GetWindowSizeInPixels() error: \(String(cString: SDL_GetError()))")
       return .exitFailure
     }
     renderer!.resize(size: SIMD2<Int>(Int(backBufferWidth), Int(backBufferHeight)))
@@ -95,15 +94,17 @@ public class Application {
 
   private func update(_ deltaTime: Double) -> ApplicationExecutionState {
     fpsCalculator.frame(deltaTime: deltaTime) { fps in
-      print("FPS: \(fps)", to: &stderr)
+      print("FPS: \(fps)")
     }
 
     do {
       try renderer!.paint()
     } catch RendererError.drawFailure(let message) {
-      print("Renderer draw error: \(message)", to: &stderr)
+      printErr("Renderer draw error: \(message)")
+      return .exitFailure
     } catch {
-      print("Renderer draw error: unexpected error", to: &stderr)
+      printErr("Renderer draw error: unexpected error")
+      return .exitFailure
     }
 
     return .running
@@ -172,6 +173,11 @@ fileprivate enum ApplicationExecutionState {
   case exitFailure
   case exitSuccess
   case running
+}
+
+func printErr(_ items: Any..., separator: String = " ", terminator: String = "\n") {
+  var stderr = FileHandle.standardError
+  print(items, separator: separator, terminator: terminator, to: &stderr)
 }
 
 extension FileHandle: TextOutputStream {

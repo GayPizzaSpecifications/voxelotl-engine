@@ -121,6 +121,7 @@ class Renderer {
     }
     self.idxBuffer = idxBuffer
 
+    // Create a default texture
     do {
       self.defaultTexture = try Self.loadTexture(device, image2D: Image2D(Data([
           0xFF, 0x00, 0xFF, 0xFF,  0x00, 0x00, 0x00, 0xFF,
@@ -130,12 +131,13 @@ class Renderer {
       throw RendererError.initFailure("Failed to create default texture")
     }
 
+    // Load texture from a file in the bundle
     do {
       self.cubeTexture = try Self.loadTexture(device, resourcePath: "test.png")
     } catch RendererError.loadFailure(let message) {
-      print("Failed to load texture image: \(message)")
+      printErr("Failed to load texture image: \(message)")
     } catch {
-      print("Failed to load texture image: unknown error")
+      printErr("Failed to load texture image: unknown error")
     }
   }
 
