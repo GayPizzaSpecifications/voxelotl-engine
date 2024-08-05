@@ -4,15 +4,6 @@ import QuartzCore.CAMetalLayer
 import simd
 import ShaderTypes
 
-//// Temp:
-//@objc fileprivate enum ShaderInputIdx: NSInteger {
-//  case ShaderInputIdxVertices = 0
-//}
-//fileprivate struct ShaderVertex {
-//  let position: SIMD4<Float>
-//  let color: SIMD4<Float>
-//}
-
 class Renderer {
   fileprivate static let vertices = [
     ShaderVertex(position: SIMD4<Float>(-0.5, -0.5, 0.0, 1.0), color: SIMD4<Float>(1.0, 0.0, 0.0, 1.0)),
