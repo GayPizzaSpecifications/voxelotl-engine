@@ -1,5 +1,5 @@
 add_executable(Voxelotl MACOSX_BUNDLE
-  Voxelotl.icns
+  Assets.xcassets
   Application.swift
   main.swift)
 
@@ -14,8 +14,8 @@ set_target_properties(Voxelotl PROPERTIES
   MACOSX_BUNDLE_BUNDLE_VERSION "${PROJECT_VERSION}"
   MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION}"
   MACOSX_BUNDLE_GUI_IDENTIFIER "gay.pizza.voxelotl"
-  MACOSX_BUNDLE_ICON_FILE "Voxelotl"
   MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/Info.plist.in"
+  XCODE_ATTRIBUTE_ASSETCATALOG_COMPILER_APPICON_NAME "AppIcon"
   BUILD_RPATH "@loader_path/../Frameworks"
   XCODE_ATTRIBUTE_SKIP_INSTALL "NO"
   XCODE_ATTRIBUTE_INSTALL_PATH "$(LOCAL_APPS_DIR)"
@@ -23,7 +23,7 @@ set_target_properties(Voxelotl PROPERTIES
   XCODE_SCHEME_ENABLE_GPU_FRAME_CAPTURE_MODE "Metal"
   XCODE_ATTRIBUTE_CODE_SIGN_ENTITLEMENTS "${CMAKE_CURRENT_SOURCE_DIR}/Voxelotl.entitlements"
   MACOSX_BUNDLE_COPYRIGHT "© 2024 Gay Pizza Specifications")
-set_source_files_properties(Voxelotl.icns PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
-source_group("Resources" FILES Voxelotl.icns)
+set_source_files_properties(Assets.xcassets PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
+source_group("Resources" FILES Assets.xcassets)
 
 source_group("Source Files" REGULAR_EXPRESSION "\\.(swift)$")
