@@ -3,7 +3,14 @@ add_executable(Voxelotl MACOSX_BUNDLE
   Renderer.swift
   FPSCalculator.swift
   Application.swift
-  main.swift)
+  main.swift
+  shader.metal)
+
+set_source_files_properties(
+  shader.metal PROPERTIES
+  LANGUAGE METAL
+  COMPILE_OPTIONS "-I${PROJECT_SOURCE_DIR}"
+)
 
 target_link_libraries(Voxelotl PRIVATE SDLSwift)
 set_target_properties(Voxelotl PROPERTIES
@@ -28,4 +35,4 @@ set_target_properties(Voxelotl PROPERTIES
 set_source_files_properties(Assets.xcassets PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
 source_group("Resources" FILES Assets.xcassets)
 
-source_group("Source Files" REGULAR_EXPRESSION "\\.(swift)$")
+source_group("Source Files" REGULAR_EXPRESSION "\\.(swift|metal)$")

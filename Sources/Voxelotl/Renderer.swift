@@ -109,12 +109,8 @@ class Renderer {
 
     // Create shader library & grab functions
     do {
-      //self.lib = try device.makeDefaultLibrary(bundle: Bundle.main)
-      let options = MTLCompileOptions()
-      options.fastMathEnabled = true
-      self.lib = try device.makeLibrary(source: Self.shaderSource, options: options)
-    }
-    catch {
+      self.lib = try device.makeDefaultLibrary(bundle: Bundle.main)
+    } catch {
       throw RendererError.initFailure("Metal shader compilation failed:\n\(error.localizedDescription)")
     }
     let vertexProgram   = lib.makeFunction(name: "vertexMain")
@@ -127,8 +123,7 @@ class Renderer {
     pipeDescription.colorAttachments[0].pixelFormat = layer.pixelFormat
     do {
       self.pso = try device.makeRenderPipelineState(descriptor: pipeDescription)
-    }
-    catch {
+    } catch {
       throw RendererError.initFailure("Failed to create pipeline state: \(error.localizedDescription)")
     }
 

@@ -25,10 +25,10 @@ public class Application {
 
     // Create SDL window
     var windowFlags = SDL_WindowFlags(0)
-    if (cfg.flags.contains(.resizable)) {
+    if cfg.flags.contains(.resizable) {
       windowFlags |= SDL_WindowFlags(SDL_WINDOW_RESIZABLE)
     }
-    if (cfg.flags.contains(.highDPI)) {
+    if cfg.flags.contains(.highDPI) {
       windowFlags |= SDL_WindowFlags(SDL_WINDOW_HIGH_PIXEL_DENSITY)
     }
     window = SDL_CreateWindow(cfg.title, cfg.width, cfg.height, windowFlags)
@@ -174,7 +174,7 @@ fileprivate enum ApplicationExecutionState {
   case running
 }
 
-extension FileHandle: TextOutputStream {
+extension FileHandle: @retroactive TextOutputStream {
   public func write(_ string: String) {
     self.write(Data(string.utf8))
   }

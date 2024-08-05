@@ -8,7 +8,7 @@ public struct FPSCalculator {
     _framesCount += 1
     _accumulator += deltaTime
 
-    if (_accumulator >= 1.0) {
+    if _accumulator >= 1.0 {
       result(_framesCount)
 
       _framesCount = 0
