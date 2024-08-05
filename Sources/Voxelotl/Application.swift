@@ -9,6 +9,7 @@ public class Application {
   private var view: SDL_MetalView? = nil
   private var renderer: Renderer? = nil
   private var lastCounter: UInt64 = 0
+  private var fpsCalculator = FPSCalculator()
 
   private var stderr = FileHandle.standardError
 
@@ -40,6 +41,7 @@ public class Application {
     view = SDL_Metal_CreateView(window)
     do {
       let layer = unsafeBitCast(SDL_Metal_GetLayer(view), to: CAMetalLayer.self)
+      layer.displaySyncEnabled = cfg.vsyncMode == .off ? false : true
       self.renderer = try Renderer(layer: layer)
     } catch RendererError.initFailure(let message) {
       print("Renderer init error: \(message)", to: &stderr)
@@ -92,6 +94,10 @@ public class Application {
   }
 
   private func update(_ deltaTime: Double) -> ApplicationExecutionState {
+    fpsCalculator.frame(deltaTime: deltaTime) { fps in
+      print("FPS: \(fps)", to: &stderr)
+    }
+
     do {
       try renderer!.paint()
     } catch RendererError.drawFailure(let message) {
@@ -99,6 +105,7 @@ public class Application {
     } catch {
       print("Renderer draw error: unexpected error", to: &stderr)
     }
+
     return .running
   }
 
@@ -140,7 +147,7 @@ public struct ApplicationConfiguration {
     static let highDPI = Flags(rawValue: 1 << 1)
   }
 
-  public enum VSyncMode {
+  public enum VSyncMode: Equatable {
     case off
     case on(interval: UInt)
     case adaptive
