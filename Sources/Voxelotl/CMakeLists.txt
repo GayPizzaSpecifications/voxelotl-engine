@@ -1,5 +1,6 @@
 add_executable(Voxelotl MACOSX_BUNDLE
   Assets.xcassets
+  Renderer.swift
   Application.swift
   main.swift)
 

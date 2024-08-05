@@ -1,11 +1,16 @@
 import Foundation
 import SDL3
+import QuartzCore.CAMetalLayer
 
 public class Application {
   private let cfg: ApplicationConfiguration
 
   private var window: OpaquePointer? = nil
+  private var view: SDL_MetalView? = nil
+  private var renderer: Renderer? = nil
   private var lastCounter: UInt64 = 0
+
+  private var stderr = FileHandle.standardError
 
   public init(configuration: ApplicationConfiguration) {
     self.cfg = configuration
@@ -13,25 +18,48 @@ public class Application {
 
   private func initialize() -> ApplicationExecutionState {
     guard SDL_Init(SDL_INIT_VIDEO) >= 0 else {
-      print("SDL_Init() error: \(String(cString: SDL_GetError()))")
+      print("SDL_Init() error: \(String(cString: SDL_GetError()))", to: &stderr)
       return .exitFailure
     }
 
+    // Create SDL window
     var windowFlags = SDL_WindowFlags(SDL_WINDOW_HIGH_PIXEL_DENSITY)
     if (cfg.flags.contains(.resizable)) {
       windowFlags |= SDL_WindowFlags(SDL_WINDOW_RESIZABLE)
     }
     window = SDL_CreateWindow(cfg.title, cfg.width, cfg.height, windowFlags)
     guard window != nil else {
-      print("SDL_CreateWindow() error: \(String(cString: SDL_GetError()))")
+      print("SDL_CreateWindow() error: \(String(cString: SDL_GetError()))", to: &stderr)
       return .exitFailure
     }
+
+    // Create Metal renderer
+    view = SDL_Metal_CreateView(window)
+    do {
+      let layer = unsafeBitCast(SDL_Metal_GetLayer(view), to: CAMetalLayer.self)
+      self.renderer = try Renderer(layer: layer)
+    } catch RendererError.initFailure(let message) {
+      print("Renderer init error: \(message)", to: &stderr)
+      return .exitFailure
+    } catch {
+      print("Renderer init error: unexpected error", to: &stderr)
+    }
+
+    // Get window metrics
+    var backBufferWidth: Int32 = 0, backBufferHeight: Int32 = 0
+    guard SDL_GetWindowSizeInPixels(window, &backBufferWidth, &backBufferHeight) >= 0 else {
+      print("SDL_GetWindowSizeInPixels() error: \(String(cString: SDL_GetError()))", to: &stderr)
+      return .exitFailure
+    }
+    renderer!.resize(size: SIMD2<Int>(Int(backBufferWidth), Int(backBufferHeight)))
 
     lastCounter = SDL_GetPerformanceCounter()
     return .running
   }
 
   private func deinitialize() {
+    renderer = nil
+    SDL_Metal_DestroyView(view)
     SDL_DestroyWindow(window)
     SDL_Quit()
   }
@@ -50,12 +78,24 @@ public class Application {
       }
       return .running
 
+    case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
+      let backBufferSize = SIMD2(Int(event.window.data1), Int(event.window.data2))
+      renderer!.resize(size: backBufferSize)
+      return .running
+
     default:
       return .running
     }
   }
 
   private func update(_ deltaTime: Double) -> ApplicationExecutionState {
+    do {
+      try renderer!.paint()
+    } catch RendererError.drawFailure(let message) {
+      print("Renderer draw error: \(message)", to: &stderr)
+    } catch {
+      print("Renderer draw error: unexpected error", to: &stderr)
+    }
     return .running
   }
 
@@ -121,4 +161,10 @@ fileprivate enum ApplicationExecutionState {
   case exitFailure
   case exitSuccess
   case running
+}
+
+extension FileHandle: TextOutputStream {
+  public func write(_ string: String) {
+    self.write(Data(string.utf8))
+  }
 }
