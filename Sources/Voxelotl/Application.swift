@@ -1,12 +1,15 @@
 import Foundation
 import SDL3
 
-class Application {
+public class Application {
+  private let cfg: ApplicationConfiguration
+
   private var window: OpaquePointer? = nil
   private var lastCounter: UInt64 = 0
 
-  private static let windowWidth: Int32 = 1280
-  private static let windowHeight: Int32 = 720
+  public init(configuration: ApplicationConfiguration) {
+    self.cfg = configuration
+  }
 
   private func initialize() -> ApplicationExecutionState {
     guard SDL_Init(SDL_INIT_VIDEO) >= 0 else {
@@ -14,9 +17,11 @@ class Application {
       return .exitFailure
     }
 
-    window = SDL_CreateWindow("Voxelotl",
-      Self.windowWidth, Self.windowHeight,
-      SDL_WindowFlags(SDL_WINDOW_RESIZABLE) | SDL_WindowFlags(SDL_WINDOW_HIGH_PIXEL_DENSITY))
+    var windowFlags = SDL_WindowFlags(SDL_WINDOW_HIGH_PIXEL_DENSITY)
+    if (cfg.flags.contains(.resizable)) {
+      windowFlags |= SDL_WindowFlags(SDL_WINDOW_RESIZABLE)
+    }
+    window = SDL_CreateWindow(cfg.title, cfg.width, cfg.height, windowFlags)
     guard window != nil else {
       print("SDL_CreateWindow() error: \(String(cString: SDL_GetError()))")
       return .exitFailure
@@ -78,6 +83,37 @@ class Application {
     }
 
     return res == .exitSuccess ? 0 : 1
+  }
+}
+
+public struct ApplicationConfiguration {
+  public struct Flags: OptionSet {
+    public let rawValue: Int
+    public init(rawValue: Int) {
+      self.rawValue = rawValue
+    }
+
+    static let resizable = Flags(rawValue: 1 << 0)
+  }
+
+  public enum VSyncMode {
+    case off
+    case on(interval: UInt)
+    case adaptive
+  }
+
+  let width: Int32
+  let height: Int32
+  let title: String
+  let flags: Flags
+  let vsyncMode: VSyncMode
+
+  public init(width: Int32, height: Int32, title: String, flags: Flags, vsyncMode: VSyncMode) {
+    self.width = width
+    self.height = height
+    self.title = title
+    self.flags = flags
+    self.vsyncMode = vsyncMode
   }
 }
 
