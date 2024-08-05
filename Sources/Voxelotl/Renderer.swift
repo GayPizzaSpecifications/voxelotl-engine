@@ -4,13 +4,43 @@ import QuartzCore.CAMetalLayer
 import simd
 import ShaderTypes
 
-class Renderer {
-  fileprivate static let vertices = [
-    ShaderVertex(position: SIMD4<Float>(-0.5, -0.5, 0.0, 1.0), color: SIMD4<Float>(1.0, 0.0, 0.0, 1.0)),
-    ShaderVertex(position: SIMD4<Float>( 0.0,  0.5, 0.0, 1.0), color: SIMD4<Float>(0.0, 1.0, 0.0, 1.0)),
-    ShaderVertex(position: SIMD4<Float>( 0.5, -0.5, 0.0, 1.0), color: SIMD4<Float>(0.0, 0.0, 1.0, 1.0))
-  ]
+fileprivate let cubeVertices: [ShaderVertex] = [
+  .init(position: .init(-1, -1,  1, 1), normal: .init( 0,  0,  1,  0), texCoord: .init(0, 0)),
+  .init(position: .init( 1, -1,  1, 1), normal: .init( 0,  0,  1,  0), texCoord: .init(1, 0)),
+  .init(position: .init(-1,  1,  1, 1), normal: .init( 0,  0,  1,  0), texCoord: .init(0, 1)),
+  .init(position: .init( 1,  1,  1, 1), normal: .init( 0,  0,  1,  0), texCoord: .init(1, 1)),
+  .init(position: .init( 1, -1,  1, 1), normal: .init( 1,  0,  0,  0), texCoord: .init(0, 0)),
+  .init(position: .init( 1, -1, -1, 1), normal: .init( 1,  0,  0,  0), texCoord: .init(1, 0)),
+  .init(position: .init( 1,  1,  1, 1), normal: .init( 1,  0,  0,  0), texCoord: .init(0, 1)),
+  .init(position: .init( 1,  1, -1, 1), normal: .init( 1,  0,  0,  0), texCoord: .init(1, 1)),
+  .init(position: .init( 1, -1, -1, 1), normal: .init( 0,  0, -1,  0), texCoord: .init(0, 0)),
+  .init(position: .init(-1, -1, -1, 1), normal: .init( 0,  0, -1,  0), texCoord: .init(1, 0)),
+  .init(position: .init( 1,  1, -1, 1), normal: .init( 0,  0, -1,  0), texCoord: .init(0, 1)),
+  .init(position: .init(-1,  1, -1, 1), normal: .init( 0,  0, -1,  0), texCoord: .init(1, 1)),
+  .init(position: .init(-1, -1, -1, 1), normal: .init(-1,  0,  0,  0), texCoord: .init(0, 0)),
+  .init(position: .init(-1, -1,  1, 1), normal: .init(-1,  0,  0,  0), texCoord: .init(1, 0)),
+  .init(position: .init(-1,  1, -1, 1), normal: .init(-1,  0,  0,  0), texCoord: .init(0, 1)),
+  .init(position: .init(-1,  1,  1, 1), normal: .init(-1,  0,  0,  0), texCoord: .init(1, 1)),
+  .init(position: .init(-1, -1, -1, 1), normal: .init( 0, -1,  0,  0), texCoord: .init(0, 0)),
+  .init(position: .init( 1, -1, -1, 1), normal: .init( 0, -1,  0,  0), texCoord: .init(1, 0)),
+  .init(position: .init(-1, -1,  1, 1), normal: .init( 0, -1,  0,  0), texCoord: .init(0, 1)),
+  .init(position: .init( 1, -1,  1, 1), normal: .init( 0, -1,  0,  0), texCoord: .init(1, 1)),
+  .init(position: .init(-1,  1,  1, 1), normal: .init( 0,  1,  0,  0), texCoord: .init(0, 0)),
+  .init(position: .init( 1,  1,  1, 1), normal: .init( 0,  1,  0,  0), texCoord: .init(1, 0)),
+  .init(position: .init(-1,  1, -1, 1), normal: .init( 0,  1,  0,  0), texCoord: .init(0, 1)),
+  .init(position: .init( 1,  1, -1, 1), normal: .init( 0,  1,  0,  0), texCoord: .init(1, 1)),
+]
 
+fileprivate let cubeIndices: [UInt16] = [
+   0,  1,  2,  2,  1,  3,
+   4,  5,  6,  6,  5,  7,
+   8,  9, 10, 10,  9, 11,
+  12, 13, 14, 14, 13, 15,
+  16, 17, 18, 18, 17, 19,
+  20, 21, 22, 22, 21, 23
+]
+
+class Renderer {
   private var device: MTLDevice
   private var layer: CAMetalLayer
   private var viewport = MTLViewport()
@@ -19,7 +49,9 @@ class Renderer {
   private let passDescription = MTLRenderPassDescriptor()
   private var pso: MTLRenderPipelineState
 
-  private var vtxBuffer: MTLBuffer! = nil
+  private var vtxBuffer: MTLBuffer, idxBuffer: MTLBuffer
+  private var defaultTexture: MTLTexture
+  private var cubeTexture: MTLTexture? = nil
 
   fileprivate static func createMetalDevice() -> MTLDevice? {
     MTLCopyAllDevices().reduce(nil, { best, dev in
@@ -71,19 +103,83 @@ class Renderer {
       throw RendererError.initFailure("Failed to create pipeline state: \(error.localizedDescription)")
     }
 
-    // Create vertex buffers
+    // Create cube mesh buffers
     guard let vtxBuffer = device.makeBuffer(
-      bytes: Self.vertices,
-      length: Self.vertices.count * MemoryLayout<ShaderVertex>.stride,
+      bytes: cubeVertices,
+      length: cubeVertices.count * MemoryLayout<ShaderVertex>.stride,
       options: .storageModeManaged)
     else {
       throw RendererError.initFailure("Failed to create vertex buffer")
     }
     self.vtxBuffer = vtxBuffer
+    guard let idxBuffer = device.makeBuffer(
+      bytes: cubeIndices,
+      length: cubeIndices.count * MemoryLayout<UInt16>.stride,
+      options: .storageModeManaged)
+    else {
+      throw RendererError.initFailure("Failed to create index buffer")
+    }
+    self.idxBuffer = idxBuffer
+
+    do {
+      self.defaultTexture = try Self.loadTexture(device, image2D: Image2D(Data([
+          0xFF, 0x00, 0xFF, 0xFF,  0x00, 0x00, 0x00, 0xFF,
+          0x00, 0x00, 0x00, 0xFF,  0xFF, 0x00, 0xFF, 0xFF
+        ]), format: .abgr8888, width: 2, height: 2, stride: 2 * 4))
+    } catch {
+      throw RendererError.initFailure("Failed to create default texture")
+    }
+
+    do {
+      self.cubeTexture = try Self.loadTexture(device, resourcePath: "test.png")
+    } catch RendererError.loadFailure(let message) {
+      print("Failed to load texture image: \(message)")
+    } catch {
+      print("Failed to load texture image: unknown error")
+    }
   }
 
   deinit {
     
+  }
+
+  static func loadTexture(_ device: MTLDevice, resourcePath path: String) throws -> MTLTexture {
+    do {
+      return try loadTexture(device, url: Bundle.main.getResource(path))
+    } catch ContentError.resourceNotFound(let message) {
+      throw RendererError.loadFailure(message)
+    }
+  }
+
+  static func loadTexture(_ device: MTLDevice, url imageUrl: URL) throws -> MTLTexture {
+    do {
+      return try loadTexture(device, image2D: try NSImageLoader.open(url: imageUrl))
+    } catch ImageLoaderError.openFailed(let message) {
+      throw RendererError.loadFailure(message)
+    }
+  }
+
+  static func loadTexture(_ device: MTLDevice, image2D image: Image2D) throws -> MTLTexture {
+    let texDesc = MTLTextureDescriptor()
+    texDesc.width  = image.width
+    texDesc.height = image.height
+    texDesc.pixelFormat = .rgba8Unorm_srgb
+    texDesc.textureType = .type2D
+    texDesc.storageMode = .managed
+    texDesc.usage = .shaderRead
+    guard let newTexture = device.makeTexture(descriptor: texDesc) else {
+      throw RendererError.loadFailure("Failed to create texture descriptor")
+    }
+    image.data.withUnsafeBytes { bytes in
+      newTexture.replace(
+        region: .init(
+          origin: .init(x: 0, y: 0, z: 0),
+          size: .init(width: image.width, height: image.height, depth: 1)),
+        mipmapLevel: 0,
+        withBytes: bytes.baseAddress!,
+        bytesPerRow: image.stride)
+    }
+    return newTexture
   }
 
   func resize(size: SIMD2<Int>) {
@@ -114,8 +210,16 @@ class Renderer {
     encoder.setCullMode(MTLCullMode.none)
     encoder.setRenderPipelineState(pso)
 
-    encoder.setVertexBuffer(vtxBuffer, offset: 0, index: ShaderInputIdx.vertices.rawValue)
-    encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+    encoder.setFragmentTexture(cubeTexture ?? defaultTexture, index: 0)
+    encoder.setVertexBuffer(vtxBuffer,
+      offset: 0,
+      index: ShaderInputIdx.vertices.rawValue)
+    encoder.drawIndexedPrimitives(
+      type: .triangle,
+      indexCount: cubeIndices.count,
+      indexType: .uint16,
+      indexBuffer: idxBuffer,
+      indexBufferOffset: 0)
 
     encoder.endEncoding()
     commandBuf.present(rt)
@@ -125,5 +229,6 @@ class Renderer {
 
 enum RendererError: Error {
   case initFailure(_ message: String)
+  case loadFailure(_ message: String)
   case drawFailure(_ message: String)
 }

@@ -16,7 +16,8 @@ typedef NS_ENUM(NSInteger, ShaderInputIdx) {
 
 typedef struct {
   vector_float4 position;
-  vector_float4 color;
+  vector_float4 normal;
+  vector_float2 texCoord;
 } ShaderVertex;
 
 #endif//SHADERTYPES_H

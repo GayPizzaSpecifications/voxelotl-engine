@@ -1,12 +1,16 @@
 add_executable(Voxelotl MACOSX_BUNDLE
   Assets.xcassets
+
+  test.png
+
+  shadertypes.h
+  shader.metal
+
+  NSImageLoader.swift
   Renderer.swift
   FPSCalculator.swift
   Application.swift
-  main.swift
-  shader.metal
-  shadertypes.h
-  module.modulemap)
+  main.swift)
 
 set_source_files_properties(
   shader.metal PROPERTIES
@@ -35,8 +39,10 @@ set_target_properties(Voxelotl PROPERTIES
   XCODE_SCHEME_ENABLE_GPU_FRAME_CAPTURE_MODE "Metal"
   XCODE_ATTRIBUTE_CODE_SIGN_ENTITLEMENTS "${CMAKE_CURRENT_SOURCE_DIR}/Voxelotl.entitlements"
   MACOSX_BUNDLE_COPYRIGHT "© 2024 Gay Pizza Specifications")
-set_source_files_properties(Assets.xcassets PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
-set_source_files_properties(module.modulemap PROPERTIES MACOSX_PACKAGE_LOCATION Modules)
-source_group("Resources" FILES Assets.xcassets)
 
+set_source_files_properties(Assets.xcassets PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+set_source_files_properties(module.modulemap PROPERTIES MACOSX_PACKAGE_LOCATION Modules)
+set_source_files_properties(test.png PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+
+source_group("Resources" FILES Assets.xcassets test.png)
 source_group("Source Files" REGULAR_EXPRESSION "\\.(swift|metal)$")
