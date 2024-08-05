@@ -2,65 +2,18 @@ import Foundation
 import Metal
 import QuartzCore.CAMetalLayer
 import simd
+import ShaderTypes
 
-// Temp:
-@objc fileprivate enum ShaderInputIdx: NSInteger {
-  case ShaderInputIdxVertices = 0
-}
-fileprivate struct ShaderVertex {
-  let position: SIMD4<Float>
-  let color: SIMD4<Float>
-}
+//// Temp:
+//@objc fileprivate enum ShaderInputIdx: NSInteger {
+//  case ShaderInputIdxVertices = 0
+//}
+//fileprivate struct ShaderVertex {
+//  let position: SIMD4<Float>
+//  let color: SIMD4<Float>
+//}
 
 class Renderer {
-  fileprivate static let shaderSource = """
-  #ifndef SHADERTYPES_H
-  #define SHADERTYPES_H
-
-  #ifdef __METAL_VERSION__
-  # define NS_ENUM(TYPE, NAME) enum NAME : TYPE NAME; enum NAME : TYPE
-  # define NSInteger metal::int32_t
-  #else
-  # import <Foundation/Foundation.h>
-  #endif
-
-  #include <simd/simd.h>
-
-  typedef NS_ENUM(NSInteger, ShaderInputIdx) {
-    ShaderInputIdxVertices = 0
-  };
-
-  typedef struct {
-    vector_float4 position;
-    vector_float4 color;
-  } ShaderVertex;
-
-  #endif//SHADERTYPES_H
-
-  #include <metal_stdlib>
-
-  using namespace metal;
-
-  struct FragmentInput {
-    float4 position [[position]];
-    float4 color;
-  };
-
-  vertex FragmentInput vertexMain(
-    uint vertexID [[vertex_id]],
-    device const ShaderVertex* vtx [[buffer(ShaderInputIdxVertices)]]
-  ){
-    FragmentInput out;
-    out.position = vtx[vertexID].position;
-    out.color    = vtx[vertexID].color;
-    return out;
-  }
-
-  fragment float4 fragmentMain(FragmentInput in [[stage_in]]) {
-    return in.color;
-  }
-  """
-
   fileprivate static let vertices = [
     ShaderVertex(position: SIMD4<Float>(-0.5, -0.5, 0.0, 1.0), color: SIMD4<Float>(1.0, 0.0, 0.0, 1.0)),
     ShaderVertex(position: SIMD4<Float>( 0.0,  0.5, 0.0, 1.0), color: SIMD4<Float>(0.0, 1.0, 0.0, 1.0)),
@@ -170,7 +123,7 @@ class Renderer {
     encoder.setCullMode(MTLCullMode.none)
     encoder.setRenderPipelineState(pso)
 
-    encoder.setVertexBuffer(vtxBuffer, offset: 0, index: ShaderInputIdx.ShaderInputIdxVertices.rawValue)
+    encoder.setVertexBuffer(vtxBuffer, offset: 0, index: ShaderInputIdx.vertices.rawValue)
     encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
 
     encoder.endEncoding()

@@ -1,0 +1,3 @@
+module ShaderTypes {
+  header "shadertypes.h"
+}

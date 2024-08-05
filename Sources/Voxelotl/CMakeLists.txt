@@ -4,7 +4,9 @@ add_executable(Voxelotl MACOSX_BUNDLE
   FPSCalculator.swift
   Application.swift
   main.swift
-  shader.metal)
+  shader.metal
+  shadertypes.h
+  module.modulemap)
 
 set_source_files_properties(
   shader.metal PROPERTIES
@@ -12,6 +14,7 @@ set_source_files_properties(
   COMPILE_OPTIONS "-I${PROJECT_SOURCE_DIR}"
 )
 
+target_include_directories(Voxelotl PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(Voxelotl PRIVATE SDLSwift)
 set_target_properties(Voxelotl PROPERTIES
   XCODE_ATTRIBUTE_ENABLE_HARDENED_RUNTIME YES
@@ -33,6 +36,7 @@ set_target_properties(Voxelotl PROPERTIES
   XCODE_ATTRIBUTE_CODE_SIGN_ENTITLEMENTS "${CMAKE_CURRENT_SOURCE_DIR}/Voxelotl.entitlements"
   MACOSX_BUNDLE_COPYRIGHT "© 2024 Gay Pizza Specifications")
 set_source_files_properties(Assets.xcassets PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
+set_source_files_properties(module.modulemap PROPERTIES MACOSX_PACKAGE_LOCATION Modules)
 source_group("Resources" FILES Assets.xcassets)
 
 source_group("Source Files" REGULAR_EXPRESSION "\\.(swift|metal)$")
