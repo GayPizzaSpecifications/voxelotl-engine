@@ -1,4 +1,7 @@
-add_executable(Voxelotl MACOSX_BUNDLE main.swift)
+add_executable(Voxelotl MACOSX_BUNDLE
+  Application.swift
+  main.swift)
+
 target_link_libraries(Voxelotl PRIVATE SDLSwift)
 set_target_properties(Voxelotl PROPERTIES
   XCODE_ATTRIBUTE_ENABLE_HARDENED_RUNTIME YES
