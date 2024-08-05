@@ -14,11 +14,9 @@ class Application {
       return .exitFailure
     }
 
-    let sdlWindowResizable:        SDL_WindowFlags = 0x0000000000000020
-    let sdlWindowHighPixelDensity: SDL_WindowFlags = 0x0000000000002000
     window = SDL_CreateWindow("Voxelotl",
       Self.windowWidth, Self.windowHeight,
-      sdlWindowResizable | sdlWindowHighPixelDensity)
+      SDL_WindowFlags(SDL_WINDOW_RESIZABLE) | SDL_WindowFlags(SDL_WINDOW_HIGH_PIXEL_DENSITY))
     guard window != nil else {
       print("SDL_CreateWindow() error: \(String(cString: SDL_GetError()))")
       return .exitFailure
