@@ -123,7 +123,7 @@ class Renderer {
 
     // Create a default texture
     do {
-      self.defaultTexture = try Self.loadTexture(device, image2D: Image2D(Data([
+      self.defaultTexture = try Self.loadTexture(device, queue, image2D: Image2D(Data([
           0xFF, 0x00, 0xFF, 0xFF,  0x00, 0x00, 0x00, 0xFF,
           0x00, 0x00, 0x00, 0xFF,  0xFF, 0x00, 0xFF, 0xFF
         ]), format: .abgr8888, width: 2, height: 2, stride: 2 * 4))
@@ -133,7 +133,7 @@ class Renderer {
 
     // Load texture from a file in the bundle
     do {
-      self.cubeTexture = try Self.loadTexture(device, resourcePath: "test.png")
+      self.cubeTexture = try Self.loadTexture(device, queue, resourcePath: "test.png")
     } catch RendererError.loadFailure(let message) {
       printErr("Failed to load texture image: \(message)")
     } catch {
@@ -145,42 +145,65 @@ class Renderer {
     
   }
 
-  static func loadTexture(_ device: MTLDevice, resourcePath path: String) throws -> MTLTexture {
+  static func loadTexture(_ device: MTLDevice, _ queue: MTLCommandQueue, resourcePath path: String) throws -> MTLTexture {
     do {
-      return try loadTexture(device, url: Bundle.main.getResource(path))
+      return try loadTexture(device, queue, url: Bundle.main.getResource(path))
     } catch ContentError.resourceNotFound(let message) {
       throw RendererError.loadFailure(message)
     }
   }
 
-  static func loadTexture(_ device: MTLDevice, url imageUrl: URL) throws -> MTLTexture {
+  static func loadTexture(_ device: MTLDevice, _ queue: MTLCommandQueue, url imageUrl: URL) throws -> MTLTexture {
     do {
-      return try loadTexture(device, image2D: try NSImageLoader.open(url: imageUrl))
+      return try loadTexture(device, queue, image2D: try NSImageLoader.open(url: imageUrl))
     } catch ImageLoaderError.openFailed(let message) {
       throw RendererError.loadFailure(message)
     }
   }
 
-  static func loadTexture(_ device: MTLDevice, image2D image: Image2D) throws -> MTLTexture {
+  static func loadTexture(_ device: MTLDevice, _ queue: MTLCommandQueue, image2D image: Image2D) throws -> MTLTexture {
     let texDesc = MTLTextureDescriptor()
     texDesc.width  = image.width
     texDesc.height = image.height
     texDesc.pixelFormat = .rgba8Unorm_srgb
     texDesc.textureType = .type2D
-    texDesc.storageMode = .managed
+    texDesc.storageMode = .private
     texDesc.usage = .shaderRead
     guard let newTexture = device.makeTexture(descriptor: texDesc) else {
       throw RendererError.loadFailure("Failed to create texture descriptor")
     }
-    image.data.withUnsafeBytes { bytes in
-      newTexture.replace(
-        region: .init(
-          origin: .init(x: 0, y: 0, z: 0),
-          size: .init(width: image.width, height: image.height, depth: 1)),
-        mipmapLevel: 0,
-        withBytes: bytes.baseAddress!,
-        bytesPerRow: image.stride)
+
+    guard let texData = image.data.withUnsafeBytes({ bytes in
+      device.makeBuffer(bytes: bytes.baseAddress!, length: bytes.count, options: [ .storageModeShared ])
+    }) else {
+      throw RendererError.loadFailure("Failed to create shared texture data buffer")
     }
+
+    guard let cmdBuffer = queue.makeCommandBuffer(),
+      let blitEncoder = cmdBuffer.makeBlitCommandEncoder()
+    else {
+      throw RendererError.loadFailure("Failed to create blit command encoder")
+    }
+
+    blitEncoder.copy(
+      from: texData,
+      sourceOffset: 0,
+      sourceBytesPerRow: image.stride,
+      sourceBytesPerImage: image.stride * image.height,
+      sourceSize: .init(width: image.width, height: image.height, depth: 1),
+
+      to: newTexture,
+      destinationSlice: 0,
+      destinationLevel: 0,
+      destinationOrigin: .init(x: 0, y: 0, z: 0))
+    blitEncoder.endEncoding()
+
+    cmdBuffer.addCompletedHandler { _ in
+      //FIXME: look into if this needs to be synchronised
+      //printErr("Texture was added?")
+    }
+    cmdBuffer.commit()
+
     return newTexture
   }
 
