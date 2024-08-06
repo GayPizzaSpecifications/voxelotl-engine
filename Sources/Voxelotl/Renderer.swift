@@ -217,10 +217,23 @@ class Renderer {
       zfar: -1.0)
   }
 
+  var time: Float = 0  //FIXME: temp
+
   func paint() throws {
-    var uniforms = ShaderUniforms(
-      model: .init(diagonal: .init(0.5, 0.5, 0.5, 1.0)),
-      projView: matrix_identity_float4x4)
+    let projection = matrix_float4x4.perspective(
+      verticalFov: Float(90.0).radians,
+      aspect: Float(self.viewport.width / self.viewport.height),
+      near: 0.1,
+      far: 10)
+    let view = matrix_float4x4.identity
+    let model: matrix_float4x4 =
+      .translate(.init(0, sin(time * 0.5) * 0.5, -2)) *
+      .scale(0.5) *
+      .rotate(y: time)
+
+    time += 0.025
+
+    var uniforms = ShaderUniforms(model: model, projView: projection * view)
 
     guard let rt = layer.nextDrawable() else {
       throw RendererError.drawFailure("Failed to get next drawable render target")

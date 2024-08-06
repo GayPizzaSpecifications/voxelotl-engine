@@ -6,6 +6,9 @@ add_executable(Voxelotl MACOSX_BUNDLE
   shadertypes.h
   shader.metal
 
+  FloatExtensions.swift
+  Matrix4x4.swift
+
   NSImageLoader.swift
   Renderer.swift
   FPSCalculator.swift
