@@ -12,10 +12,14 @@ struct FragmentInput {
 
 vertex FragmentInput vertexMain(
   uint vertexID [[vertex_id]],
-  device const ShaderVertex* vtx [[buffer(ShaderInputIdxVertices)]]
+  device const ShaderVertex* vtx [[buffer(ShaderInputIdxVertices)]],
+  constant ShaderUniforms& u [[buffer(ShaderInputIdxUniforms)]]
 ) {
+  auto position = vtx[vertexID].position;
+  position = u.projView * u.model * position;
+
   FragmentInput out;
-  out.position = vtx[vertexID].position * float4(0.5, 0.5, 0.5, 1.0);
+  out.position = position;
   out.normal   = vtx[vertexID].normal;
   out.texCoord = vtx[vertexID].texCoord;
   return out;

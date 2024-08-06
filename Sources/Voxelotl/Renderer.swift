@@ -218,6 +218,10 @@ class Renderer {
   }
 
   func paint() throws {
+    var uniforms = ShaderUniforms(
+      model: .init(diagonal: .init(0.5, 0.5, 0.5, 1.0)),
+      projView: matrix_identity_float4x4)
+
     guard let rt = layer.nextDrawable() else {
       throw RendererError.drawFailure("Failed to get next drawable render target")
     }
@@ -239,6 +243,10 @@ class Renderer {
     encoder.setVertexBuffer(vtxBuffer,
       offset: 0,
       index: ShaderInputIdx.vertices.rawValue)
+    // Ideal as long as our uniforms total 4 KB or less
+    encoder.setVertexBytes(&uniforms,
+      length: MemoryLayout<ShaderUniforms>.stride,
+      index: ShaderInputIdx.uniforms.rawValue)
     encoder.drawIndexedPrimitives(
       type: .triangle,
       indexCount: cubeIndices.count,

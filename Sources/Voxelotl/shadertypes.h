@@ -11,7 +11,8 @@
 #include <simd/simd.h>
 
 typedef NS_ENUM(NSInteger, ShaderInputIdx) {
-  ShaderInputIdxVertices = 0
+  ShaderInputIdxVertices = 0,
+  ShaderInputIdxUniforms = 1
 };
 
 typedef struct {
@@ -19,5 +20,10 @@ typedef struct {
   vector_float4 normal;
   vector_float2 texCoord;
 } ShaderVertex;
+
+typedef struct {
+  matrix_float4x4 model;
+  matrix_float4x4 projView;
+} ShaderUniforms;
 
 #endif//SHADERTYPES_H
