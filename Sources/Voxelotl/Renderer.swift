@@ -41,13 +41,18 @@ fileprivate let cubeIndices: [UInt16] = [
 ]
 
 class Renderer {
+  private let depthFormat: MTLPixelFormat = .depth16Unorm
+
   private var device: MTLDevice
   private var layer: CAMetalLayer
   private var viewport = MTLViewport()
+  private var aspectRatio: Float
   private var queue: MTLCommandQueue
   private var lib: MTLLibrary
   private let passDescription = MTLRenderPassDescriptor()
   private var pso: MTLRenderPipelineState
+  private var depthStencilState: MTLDepthStencilState
+  private var depthStencilTexture: MTLTexture
 
   private var vtxBuffer: MTLBuffer, idxBuffer: MTLBuffer
   private var defaultTexture: MTLTexture
@@ -62,7 +67,7 @@ class Renderer {
     })
   }
 
-  init(layer metalLayer: CAMetalLayer) throws {
+  init(layer metalLayer: CAMetalLayer, size: SIMD2<Int>) throws {
     self.layer = metalLayer
 
     // Select best Metal device
@@ -79,9 +84,36 @@ class Renderer {
       throw RendererError.initFailure("Failed to create command queue")
     }
     self.queue = queue
-    passDescription.colorAttachments[0].loadAction  = MTLLoadAction.clear
-    passDescription.colorAttachments[0].storeAction = MTLStoreAction.store
+
+    self.viewport = MTLViewport(
+      originX: 0.0,
+      originY: 0.0,
+      width:  Double(size.x),
+      height: Double(size.y),
+      znear: 1.0,
+      zfar: -1.0)
+    self.aspectRatio = Float(size.x) / Float(size.y)
+
+    passDescription.colorAttachments[0].loadAction  = .clear
+    passDescription.colorAttachments[0].storeAction = .store
     passDescription.colorAttachments[0].clearColor  = MTLClearColorMake(0.1, 0.1, 0.1, 1.0)
+    passDescription.depthAttachment.loadAction  = .clear
+    passDescription.depthAttachment.storeAction = .dontCare
+    passDescription.depthAttachment.clearDepth  = 1.0
+
+    guard let depthStencilTexture = Self.createDepthTexture(device, size, format: depthFormat) else {
+      throw RendererError.initFailure("Failed to create depth buffer")
+    }
+    self.depthStencilTexture = depthStencilTexture
+    passDescription.depthAttachment.texture = self.depthStencilTexture
+
+    let stencilDepthDescription = MTLDepthStencilDescriptor()
+    stencilDepthDescription.depthCompareFunction = .less  // OpenGL default
+    stencilDepthDescription.isDepthWriteEnabled  = true
+    guard let depthStencilState = device.makeDepthStencilState(descriptor: stencilDepthDescription) else {
+      throw RendererError.initFailure("Failed to create depth stencil state")
+    }
+    self.depthStencilState = depthStencilState
 
     // Create shader library & grab functions
     do {
@@ -97,6 +129,7 @@ class Renderer {
     pipeDescription.vertexFunction   = vertexProgram
     pipeDescription.fragmentFunction = fragmentProgram
     pipeDescription.colorAttachments[0].pixelFormat = layer.pixelFormat
+    pipeDescription.depthAttachmentPixelFormat = depthFormat
     do {
       self.pso = try device.makeRenderPipelineState(descriptor: pipeDescription)
     } catch {
@@ -207,7 +240,37 @@ class Renderer {
     return newTexture
   }
 
+  private static func createDepthTexture(_ device: MTLDevice, _ size: SIMD2<Int>, format: MTLPixelFormat
+  ) -> MTLTexture? {
+    let texDescriptor = MTLTextureDescriptor.texture2DDescriptor(
+      pixelFormat: format,
+      width:       size.x,
+      height:      size.y,
+      mipmapped:   false)
+    texDescriptor.depth = 1
+    texDescriptor.sampleCount = 1
+    texDescriptor.usage       = [ .renderTarget, .shaderRead ]
+#if !NDEBUG
+    texDescriptor.storageMode = .private
+#else
+    texDescriptor.storageMode = .memoryless
+#endif
+
+    guard let depthStencilTexture = device.makeTexture(descriptor: texDescriptor) else { return nil }
+    depthStencilTexture.label = "Depth buffer"
+
+    return depthStencilTexture
+  }
+
   func resize(size: SIMD2<Int>) {
+    if Int(self.viewport.width) != size.x || Int(self.viewport.height) != size.y {
+      if let depthStencilTexture = Self.createDepthTexture(device, size, format: depthFormat) {
+        self.depthStencilTexture = depthStencilTexture
+        passDescription.depthAttachment.texture = self.depthStencilTexture
+      }
+    }
+
+    self.aspectRatio = Float(size.x) / Float(size.y)
     self.viewport = MTLViewport(
       originX: 0.0,
       originY: 0.0,
@@ -220,14 +283,21 @@ class Renderer {
   var time: Float = 0  //FIXME: temp
 
   func paint() throws {
+#if true
     let projection = matrix_float4x4.perspective(
       verticalFov: Float(90.0).radians,
-      aspect: Float(self.viewport.width / self.viewport.height),
-      near: 0.1,
-      far: 10)
+      aspect: aspectRatio,
+      near: 0.003,
+      far: 4)
+#else
+    let projection = matrix_float4x4.orthographic(
+      left: -aspectRatio, right: aspectRatio,
+      bottom: -1, top: 1,
+      near: 0, far: -4)
+#endif
     let view = matrix_float4x4.identity
     let model: matrix_float4x4 =
-      .translate(.init(0, sin(time * 0.5) * 0.5, -2)) *
+      .translate(.init(0, sin(time * 0.5) * 0.75, -2)) *
       .scale(0.5) *
       .rotate(y: time)
 
@@ -248,9 +318,11 @@ class Renderer {
       throw RendererError.drawFailure("Failed to make render encoder from command buffer")
     }
 
+    encoder.setCullMode(.back)
+    encoder.setFrontFacing(.counterClockwise)  // OpenGL default
     encoder.setViewport(viewport)
-    encoder.setCullMode(MTLCullMode.none)
     encoder.setRenderPipelineState(pso)
+    encoder.setDepthStencilState(depthStencilState)
 
     encoder.setFragmentTexture(cubeTexture ?? defaultTexture, index: 0)
     encoder.setVertexBuffer(vtxBuffer,
