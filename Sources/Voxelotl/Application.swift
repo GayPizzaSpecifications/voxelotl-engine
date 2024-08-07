@@ -36,26 +36,25 @@ public class Application {
       return .exitFailure
     }
 
-    // Create Metal renderer
-    view = SDL_Metal_CreateView(window)
-    do {
-      let layer = unsafeBitCast(SDL_Metal_GetLayer(view), to: CAMetalLayer.self)
-      layer.displaySyncEnabled = cfg.vsyncMode == .off ? false : true
-      self.renderer = try Renderer(layer: layer)
-    } catch RendererError.initFailure(let message) {
-      printErr("Renderer init error: \(message)")
-      return .exitFailure
-    } catch {
-      printErr("Renderer init error: unexpected error")
-    }
-
     // Get window metrics
     var backBufferWidth: Int32 = 0, backBufferHeight: Int32 = 0
     guard SDL_GetWindowSizeInPixels(window, &backBufferWidth, &backBufferHeight) >= 0 else {
       printErr("SDL_GetWindowSizeInPixels() error: \(String(cString: SDL_GetError()))")
       return .exitFailure
     }
-    renderer!.resize(size: SIMD2<Int>(Int(backBufferWidth), Int(backBufferHeight)))
+
+    // Create Metal renderer
+    view = SDL_Metal_CreateView(window)
+    do {
+      let layer = unsafeBitCast(SDL_Metal_GetLayer(view), to: CAMetalLayer.self)
+      layer.displaySyncEnabled = cfg.vsyncMode == .off ? false : true
+      self.renderer = try Renderer(layer: layer, size: SIMD2<Int>(Int(backBufferWidth), Int(backBufferHeight)))
+    } catch RendererError.initFailure(let message) {
+      printErr("Renderer init error: \(message)")
+      return .exitFailure
+    } catch {
+      printErr("Renderer init error: unexpected error")
+    }
 
     lastCounter = SDL_GetPerformanceCounter()
     return .running

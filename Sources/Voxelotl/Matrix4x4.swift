@@ -43,18 +43,36 @@ public extension simd_float4x4 {
       .init(0,  0, 0, 1))
   }
 
-  static func perspective(verticalFov: T, aspect: T, near: T, far: T) -> Self {
-    let h = 1 / tan(verticalFov * T(0.5))
-    let w = h / aspect
-
-    let invClipRange = 1 / (far - near)
-    let z = -(far + near) * invClipRange
-    let z2 = -(2 * far * near) * invClipRange
+  static func orthographic(left: T, right: T, bottom: T, top: T, near: T, far: T) -> Self {
+    let
+      invWidth  = 1 / (right - left),
+      invHeight = 1 / (top - bottom),
+      invDepth  = 1 / (far - near)
+    let
+      tx = -(right + left) * invWidth,
+      ty = -(top + bottom) * invHeight,
+      tz = -near * invDepth
+    let x = 2 * invWidth, y = 2 * invHeight, z = invDepth
 
     return .init(
-      .init(w, 0,  0,  0),
-      .init(0, h,  0,  0),
-      .init(0, 0,  z, -1),
-      .init(0, 0, z2,  0))
+    .init( x,  0,  0, 0),
+    .init( 0,  y,  0, 0),
+    .init( 0,  0,  z, 0),
+    .init(tx, ty, tz, 1))
+  }
+
+  static func perspective(verticalFov fovY: T, aspect: T, near: T, far: T) -> Self {
+    let tanHalfFovY = tan(fovY * T(0.5))
+    let invClipRange = 1 / (near - far)
+
+    let y = 1 / tanHalfFovY
+    let x = y / aspect
+    let z = far * invClipRange
+    let w = near * z // (far * near) * invClipRange
+    return .init(
+      .init(x, 0, 0,  0),
+      .init(0, y, 0,  0),
+      .init(0, 0, z, -1),
+      .init(0, 0, w,  0))
   }
 }
