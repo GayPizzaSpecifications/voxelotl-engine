@@ -11,6 +11,8 @@ add_executable(Voxelotl MACOSX_BUNDLE
 
   NSImageLoader.swift
   Renderer.swift
+  GameController.swift
+  Camera.swift
   FPSCalculator.swift
   Application.swift
   main.swift)

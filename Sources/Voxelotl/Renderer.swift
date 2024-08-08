@@ -280,26 +280,30 @@ class Renderer {
       zfar: -1.0)
   }
 
-  var time: Float = 0  //FIXME: temp
+  //FIXME: temp
+  var camera = Camera()
+  var time: Float = 0
 
   func paint() throws {
+  camera.update(deltaTime: 0.025)
 #if true
     let projection = matrix_float4x4.perspective(
-      verticalFov: Float(90.0).radians,
+      verticalFov: Float(60.0).radians,
       aspect: aspectRatio,
       near: 0.003,
-      far: 4)
+      far: 100)
 #else
     let projection = matrix_float4x4.orthographic(
       left: -aspectRatio, right: aspectRatio,
       bottom: -1, top: 1,
       near: 0, far: -4)
 #endif
-    let view = matrix_float4x4.identity
+    let view = camera.view
     let model: matrix_float4x4 =
-      .translate(.init(0, sin(time * 0.5) * 0.75, -2)) *
-      .scale(0.5) *
-      .rotate(y: time)
+      .translate(.init(0, -1, 0)) * .scale(.init(10, 0.1, 10))
+      //.translate(.init(0, sin(time * 0.5) * 0.75, -2)) *
+      //.scale(0.5) *
+      //.rotate(y: time)
 
     time += 0.025
 

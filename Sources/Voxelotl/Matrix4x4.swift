@@ -43,6 +43,19 @@ public extension simd_float4x4 {
       .init(0,  0, 0, 1))
   }
 
+  @inline(__always) static func rotate(yawPitch yp: SIMD2<T>) -> Self { rotate(yaw: yp.x, pitch: yp.y) }
+
+  static func rotate(yaw ytheta: T, pitch xtheta: T) -> Self {
+    let xc = cos(xtheta), xs = sin(xtheta)
+    let yc = cos(ytheta), ys = sin(ytheta)
+
+    return .init(
+      .init(yc, ys *  xs, -ys * xc, 0),
+      .init( 0,       xc,       xs, 0),
+      .init(ys, yc * -xs,  yc * xc, 0),
+      .init( 0,        0,        0, 1))
+  }
+
   static func orthographic(left: T, right: T, bottom: T, top: T, near: T, far: T) -> Self {
     let
       invWidth  = 1 / (right - left),

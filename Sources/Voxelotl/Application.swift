@@ -17,13 +17,13 @@ public class Application {
   }
 
   private func initialize() -> ApplicationExecutionState {
-    guard SDL_Init(SDL_INIT_VIDEO) >= 0 else {
+    guard SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD) >= 0 else {
       printErr("SDL_Init() error: \(String(cString: SDL_GetError()))")
       return .exitFailure
     }
 
     // Create SDL window
-    var windowFlags = SDL_WindowFlags(0)
+    var windowFlags = SDL_WindowFlags(SDL_WINDOW_METAL)
     if cfg.flags.contains(.resizable) {
       windowFlags |= SDL_WindowFlags(SDL_WINDOW_RESIZABLE)
     }
@@ -67,6 +67,10 @@ public class Application {
     SDL_Quit()
   }
 
+  private func beginHandleEvents() {
+    GameController.instance.newFrame()
+  }
+
   private func handleEvent(_ event: SDL_Event) -> ApplicationExecutionState {
     switch SDL_EventType(event.type) {
     case SDL_EVENT_QUIT:
@@ -79,6 +83,23 @@ public class Application {
       default:
         break
       }
+      return .running
+
+    case SDL_EVENT_GAMEPAD_ADDED:
+      if SDL_IsGamepad(event.gdevice.which) != SDL_FALSE {
+        GameController.instance.connectedEvent(id: event.gdevice.which)
+      }
+      return .running
+    case SDL_EVENT_GAMEPAD_REMOVED:
+      GameController.instance.removedEvent(id: event.gdevice.which)
+      return .running
+    case SDL_EVENT_GAMEPAD_AXIS_MOTION:
+      GameController.instance.axisEvent(id: event.gaxis.which,
+        axis: SDL_GamepadAxis(Int32(event.gaxis.axis)), value: event.gaxis.value)
+      return .running
+    case SDL_EVENT_GAMEPAD_BUTTON_DOWN, SDL_EVENT_GAMEPAD_BUTTON_UP:
+      GameController.instance.buttonEvent(id: event.gbutton.which,
+        btn: SDL_GamepadButton(Int32(event.gbutton.button)), state: event.gbutton.state)
       return .running
 
     case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
@@ -120,6 +141,7 @@ public class Application {
     var res = initialize()
 
     quit: while res == .running {
+      beginHandleEvents()
       var event = SDL_Event()
       while SDL_PollEvent(&event) > 0 {
         res = handleEvent(event)
