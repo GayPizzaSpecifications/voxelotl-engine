@@ -40,9 +40,10 @@ fileprivate let cubeIndices: [UInt16] = [
   20, 21, 22, 22, 21, 23
 ]
 
-class Renderer {
-  private let depthFormat: MTLPixelFormat = .depth16Unorm
+fileprivate let numFramesInFlight: Int = 3
+fileprivate let depthFormat: MTLPixelFormat = .depth16Unorm
 
+class Renderer {
   private var device: MTLDevice
   private var layer: CAMetalLayer
   private var viewport: MTLViewport
@@ -52,11 +53,14 @@ class Renderer {
   private let passDescription = MTLRenderPassDescriptor()
   private var pso: MTLRenderPipelineState
   private var depthStencilState: MTLDepthStencilState
-  private var depthStencilTexture: MTLTexture
+  private var depthTextures: [MTLTexture]
 
   private var vtxBuffer: MTLBuffer, idxBuffer: MTLBuffer
   private var defaultTexture: MTLTexture
   private var cubeTexture: MTLTexture? = nil
+
+  private let inFlightSemaphore = DispatchSemaphore(value: numFramesInFlight)
+  private var frame = 0
 
   fileprivate static func createMetalDevice() -> MTLDevice? {
     MTLCopyAllDevices().reduce(nil, { best, dev in
@@ -95,11 +99,12 @@ class Renderer {
     passDescription.depthAttachment.storeAction = .dontCare
     passDescription.depthAttachment.clearDepth  = 1.0
 
-    guard let depthStencilTexture = Self.createDepthTexture(device, size, format: depthFormat) else {
-      throw RendererError.initFailure("Failed to create depth buffer")
+    self.depthTextures = try (0..<numFramesInFlight).map { _ in
+      guard let depthStencilTexture = Self.createDepthTexture(device, size, format: depthFormat) else {
+        throw RendererError.initFailure("Failed to create depth buffer")
+      }
+      return depthStencilTexture
     }
-    self.depthStencilTexture = depthStencilTexture
-    passDescription.depthAttachment.texture = self.depthStencilTexture
 
     let stencilDepthDescription = MTLDepthStencilDescriptor()
     stencilDepthDescription.depthCompareFunction = .less  // OpenGL default
@@ -266,9 +271,8 @@ class Renderer {
 
   func resize(size: SIMD2<Int>) {
     if Int(self.viewport.width) != size.x || Int(self.viewport.height) != size.y {
-      if let depthStencilTexture = Self.createDepthTexture(device, size, format: depthFormat) {
-        self.depthStencilTexture = depthStencilTexture
-        passDescription.depthAttachment.texture = self.depthStencilTexture
+      self.depthTextures = (0..<numFramesInFlight).map { _ in
+        Self.createDepthTexture(device, size, format: depthFormat)!
       }
     }
 
@@ -307,15 +311,23 @@ class Renderer {
 
     var uniforms = ShaderUniforms(projView: projection * view)
 
+    // Lock the semaphore here if too many frames are "in flight"
+    _ = inFlightSemaphore.wait(timeout: .distantFuture)
+
     guard let rt = layer.nextDrawable() else {
       throw RendererError.drawFailure("Failed to get next drawable render target")
     }
 
     passDescription.colorAttachments[0].texture = rt.texture
+    passDescription.depthAttachment.texture = self.depthTextures[self.frame]
 
     guard let commandBuf: MTLCommandBuffer = queue.makeCommandBuffer() else {
       throw RendererError.drawFailure("Failed to make command buffer from queue")
     }
+    commandBuf.addCompletedHandler { _ in
+      self.inFlightSemaphore.signal()
+    }
+
     guard let encoder = commandBuf.makeRenderCommandEncoder(descriptor: passDescription) else {
       throw RendererError.drawFailure("Failed to make render encoder from command buffer")
     }
@@ -350,6 +362,11 @@ class Renderer {
     encoder.endEncoding()
     commandBuf.present(rt)
     commandBuf.commit()
+
+    self.frame &+= 1
+    if self.frame == numFramesInFlight {
+      self.frame = 0
+    }
   }
 }
 
