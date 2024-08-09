@@ -286,24 +286,26 @@ class Renderer {
     let projection = matrix_float4x4.perspective(
       verticalFov: Float(60.0).radians,
       aspect: aspectRatio,
-      near: 0.003,
-      far: 100)
+      near: 0.03,
+      far: 25)
 #else
     let projection = matrix_float4x4.orthographic(
       left: -aspectRatio, right: aspectRatio,
       bottom: -1, top: 1,
-      near: 0, far: -4)
+      near: -0.03, far: -25)
 #endif
     let view = camera.view
-    let model: matrix_float4x4 =
-      .translate(.init(0, -1, 0)) * .scale(.init(10, 0.1, 10))
-      //.translate(.init(0, sin(time * 0.5) * 0.75, -2)) *
-      //.scale(0.5) *
-      //.rotate(y: time)
+
+    let instances: [ShaderInstance] = [
+      ShaderInstance(model: .translate(.init(0, sin(time * 0.5) * 0.5, -2)) * .rotate(y: time) * .scale(0.25), color: .init(0.5, 0.5, 1, 1)),
+      ShaderInstance(model: .translate(.init(0, -1, 0)) * .scale(.init(10, 0.1, 10)), color: .init(1, 1, 1, 1)),
+      ShaderInstance(model: .translate(.init(-2.5, 0, -3)), color: .init(1, 0.5, 0.75, 1)),
+      ShaderInstance(model: .translate(.init(-2.5, -0.5, -5)), color: .init(0.75, 1, 1, 1))
+    ]
 
     time += 0.025
 
-    var uniforms = ShaderUniforms(model: model, projView: projection * view)
+    var uniforms = ShaderUniforms(projView: projection * view)
 
     guard let rt = layer.nextDrawable() else {
       throw RendererError.drawFailure("Failed to get next drawable render target")
@@ -318,7 +320,7 @@ class Renderer {
       throw RendererError.drawFailure("Failed to make render encoder from command buffer")
     }
 
-    encoder.setCullMode(.none)
+    encoder.setCullMode(.back)
     encoder.setFrontFacing(.counterClockwise)  // OpenGL default
     encoder.setViewport(viewport)
     encoder.setRenderPipelineState(pso)
@@ -328,16 +330,22 @@ class Renderer {
     encoder.setVertexBuffer(vtxBuffer,
       offset: 0,
       index: ShaderInputIdx.vertices.rawValue)
+
     // Ideal as long as our uniforms total 4 KB or less
+    encoder.setVertexBytes(instances,
+      length: instances.count * MemoryLayout<ShaderInstance>.stride,
+      index: ShaderInputIdx.instance.rawValue)
     encoder.setVertexBytes(&uniforms,
       length: MemoryLayout<ShaderUniforms>.stride,
       index: ShaderInputIdx.uniforms.rawValue)
+
     encoder.drawIndexedPrimitives(
       type: .triangle,
       indexCount: cubeIndices.count,
       indexType: .uint16,
       indexBuffer: idxBuffer,
-      indexBufferOffset: 0)
+      indexBufferOffset: 0,
+      instanceCount: instances.count)
 
     encoder.endEncoding()
     commandBuf.present(rt)

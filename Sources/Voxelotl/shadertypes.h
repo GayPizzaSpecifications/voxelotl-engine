@@ -12,7 +12,8 @@
 
 typedef NS_ENUM(NSInteger, ShaderInputIdx) {
   ShaderInputIdxVertices = 0,
-  ShaderInputIdxUniforms = 1
+  ShaderInputIdxInstance = 1,
+  ShaderInputIdxUniforms = 2
 };
 
 typedef struct {
@@ -23,6 +24,10 @@ typedef struct {
 
 typedef struct {
   matrix_float4x4 model;
+  vector_float4 color;
+} ShaderInstance;
+
+typedef struct {
   matrix_float4x4 projView;
 } ShaderUniforms;
 
