@@ -45,7 +45,7 @@ class Renderer {
 
   private var device: MTLDevice
   private var layer: CAMetalLayer
-  private var viewport = MTLViewport()
+  private var viewport: MTLViewport
   private var aspectRatio: Float
   private var queue: MTLCommandQueue
   private var lib: MTLLibrary
@@ -85,13 +85,7 @@ class Renderer {
     }
     self.queue = queue
 
-    self.viewport = MTLViewport(
-      originX: 0.0,
-      originY: 0.0,
-      width:  Double(size.x),
-      height: Double(size.y),
-      znear: 1.0,
-      zfar: -1.0)
+    self.viewport = Self.makeViewport(size: size)
     self.aspectRatio = Float(size.x) / Float(size.y)
 
     passDescription.colorAttachments[0].loadAction  = .clear
@@ -262,6 +256,14 @@ class Renderer {
     return depthStencilTexture
   }
 
+  static func makeViewport(size: SIMD2<Int>) -> MTLViewport {
+    MTLViewport(
+      originX: 0.0, originY: 0.0,
+      width:  Double(size.x),
+      height: Double(size.y),
+      znear: 0, zfar: 1)
+  }
+
   func resize(size: SIMD2<Int>) {
     if Int(self.viewport.width) != size.x || Int(self.viewport.height) != size.y {
       if let depthStencilTexture = Self.createDepthTexture(device, size, format: depthFormat) {
@@ -271,13 +273,7 @@ class Renderer {
     }
 
     self.aspectRatio = Float(size.x) / Float(size.y)
-    self.viewport = MTLViewport(
-      originX: 0.0,
-      originY: 0.0,
-      width:  Double(size.x),
-      height: Double(size.y),
-      znear: 1.0,
-      zfar: -1.0)
+    self.viewport = Self.makeViewport(size: size)
   }
 
   //FIXME: temp
@@ -322,7 +318,7 @@ class Renderer {
       throw RendererError.drawFailure("Failed to make render encoder from command buffer")
     }
 
-    encoder.setCullMode(.back)
+    encoder.setCullMode(.none)
     encoder.setFrontFacing(.counterClockwise)  // OpenGL default
     encoder.setViewport(viewport)
     encoder.setRenderPipelineState(pso)
