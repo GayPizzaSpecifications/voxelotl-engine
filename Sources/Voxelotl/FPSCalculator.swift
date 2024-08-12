@@ -1,18 +1,20 @@
 import Foundation
 
 public struct FPSCalculator {
-  private var _accumulator = 0.0
+  private var _accumulator = Duration.zero
   private var _framesCount = 0
 
-  public mutating func frame(deltaTime: Double, result: (_ fps: Int) -> Void) {
-    _framesCount += 1
-    _accumulator += deltaTime
+  public mutating func frame(deltaTime: Duration, result: (_ fps: Int) -> Void) {
+    self._framesCount += 1
+    self._accumulator += deltaTime
 
-    if _accumulator >= 1.0 {
-      result(_framesCount)
+    if self._accumulator >= Duration.seconds(1) {
+      result(self._framesCount)
 
-      _framesCount = 0
-      _accumulator = fmod(_accumulator, 1.0)
+      self._framesCount = 0
+      self._accumulator = .init(
+        secondsComponent: 0,
+        attosecondsComponent: self._accumulator.components.attoseconds)
     }
   }
 }

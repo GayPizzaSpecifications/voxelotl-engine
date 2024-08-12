@@ -24,7 +24,7 @@ typedef struct {
 
 typedef struct {
   matrix_float4x4 model;
-  vector_float4 color;
+  vector_uchar4 color;
 } ShaderInstance;
 
 typedef struct {

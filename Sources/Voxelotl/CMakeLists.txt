@@ -8,13 +8,19 @@ add_executable(Voxelotl MACOSX_BUNDLE
 
   FloatExtensions.swift
   Matrix4x4.swift
+  Rectangle.swift
 
   NSImageLoader.swift
   Renderer.swift
   GameController.swift
   Camera.swift
+  Player.swift
   FPSCalculator.swift
+  GameDelegate.swift
   Application.swift
+
+  Game.swift
+
   main.swift)
 
 set_source_files_properties(

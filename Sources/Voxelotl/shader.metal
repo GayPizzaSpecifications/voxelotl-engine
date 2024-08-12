@@ -22,7 +22,7 @@ vertex FragmentInput vertexMain(
 
   FragmentInput out;
   out.position = ndc;
-  out.color    = half4(i[instanceID].color);
+  out.color    = half4(i[instanceID].color) / 255.0;
   out.normal   = vtx[vertexID].normal;
   out.texCoord = vtx[vertexID].texCoord;
   return out;

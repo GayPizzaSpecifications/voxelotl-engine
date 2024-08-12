@@ -43,11 +43,11 @@ fileprivate let cubeIndices: [UInt16] = [
 fileprivate let numFramesInFlight: Int = 3
 fileprivate let depthFormat: MTLPixelFormat = .depth16Unorm
 
-class Renderer {
+public class Renderer {
   private var device: MTLDevice
   private var layer: CAMetalLayer
-  private var viewport: MTLViewport
-  private var aspectRatio: Float
+  private var backBufferSize: Size<Int>
+  private var _aspectRatio: Float
   private var queue: MTLCommandQueue
   private var lib: MTLLibrary
   private let passDescription = MTLRenderPassDescriptor()
@@ -55,12 +55,19 @@ class Renderer {
   private var depthStencilState: MTLDepthStencilState
   private var depthTextures: [MTLTexture]
 
+  private var _commandBuf: MTLCommandBuffer!
+  private var _encoder: MTLRenderCommandEncoder!
+  private var _rt: (any CAMetalDrawable)!
+
   private var vtxBuffer: MTLBuffer, idxBuffer: MTLBuffer
   private var defaultTexture: MTLTexture
   private var cubeTexture: MTLTexture? = nil
 
   private let inFlightSemaphore = DispatchSemaphore(value: numFramesInFlight)
-  private var frame = 0
+  private var currentFrame = 0
+
+  var frame: Rect<Int> { .init(origin: .zero, size: self.backBufferSize) }
+  var aspectRatio: Float { self._aspectRatio }
 
   fileprivate static func createMetalDevice() -> MTLDevice? {
     MTLCopyAllDevices().reduce(nil, { best, dev in
@@ -71,7 +78,7 @@ class Renderer {
     })
   }
 
-  init(layer metalLayer: CAMetalLayer, size: SIMD2<Int>) throws {
+  internal init(layer metalLayer: CAMetalLayer, size: Size<Int>) throws {
     self.layer = metalLayer
 
     // Select best Metal device
@@ -89,8 +96,8 @@ class Renderer {
     }
     self.queue = queue
 
-    self.viewport = Self.makeViewport(size: size)
-    self.aspectRatio = Float(size.x) / Float(size.y)
+    self.backBufferSize = size
+    self._aspectRatio = Float(self.backBufferSize.w) / Float(self.backBufferSize.w)
 
     passDescription.colorAttachments[0].loadAction  = .clear
     passDescription.colorAttachments[0].storeAction = .store
@@ -239,12 +246,12 @@ class Renderer {
     return newTexture
   }
 
-  private static func createDepthTexture(_ device: MTLDevice, _ size: SIMD2<Int>, format: MTLPixelFormat
+  private static func createDepthTexture(_ device: MTLDevice, _ size: Size<Int>, format: MTLPixelFormat
   ) -> MTLTexture? {
     let texDescriptor = MTLTextureDescriptor.texture2DDescriptor(
       pixelFormat: format,
-      width:       size.x,
-      height:      size.y,
+      width:       size.w,
+      height:      size.h,
       mipmapped:   false)
     texDescriptor.depth = 1
     texDescriptor.sampleCount = 1
@@ -261,111 +268,110 @@ class Renderer {
     return depthStencilTexture
   }
 
-  static func makeViewport(size: SIMD2<Int>) -> MTLViewport {
+  static func makeViewport(rect: Rect<Int>, znear: Double = 0.0, zfar: Double = 1.0) -> MTLViewport {
     MTLViewport(
-      originX: 0.0, originY: 0.0,
-      width:  Double(size.x),
-      height: Double(size.y),
-      znear: 0, zfar: 1)
+      originX: Double(rect.x),
+      originY: Double(rect.y),
+      width:   Double(rect.w),
+      height:  Double(rect.h),
+      znear: znear, zfar: zfar)
   }
 
-  func resize(size: SIMD2<Int>) {
-    if Int(self.viewport.width) != size.x || Int(self.viewport.height) != size.y {
+  func resize(size: Size<Int>) {
+    if self.backBufferSize.w != size.w || self.backBufferSize.h != size.h {
       self.depthTextures = (0..<numFramesInFlight).map { _ in
         Self.createDepthTexture(device, size, format: depthFormat)!
       }
     }
 
-    self.aspectRatio = Float(size.x) / Float(size.y)
-    self.viewport = Self.makeViewport(size: size)
+    self.backBufferSize = size
+    self._aspectRatio = Float(self.backBufferSize.w) / Float(self.backBufferSize.h)
   }
 
-  //FIXME: temp
-  var camera = Camera()
-  var time: Float = 0
-
-  func paint() throws {
-  camera.update(deltaTime: 0.025)
-#if true
-    let projection = matrix_float4x4.perspective(
-      verticalFov: Float(60.0).radians,
-      aspect: aspectRatio,
-      near: 0.03,
-      far: 25)
-#else
-    let projection = matrix_float4x4.orthographic(
-      left: -aspectRatio, right: aspectRatio,
-      bottom: -1, top: 1,
-      near: -0.03, far: -25)
-#endif
-    let view = camera.view
-
-    let instances: [ShaderInstance] = [
-      ShaderInstance(model: .translate(.init(0, sin(time * 0.5) * 0.5, -2)) * .rotate(y: time) * .scale(0.25), color: .init(0.5, 0.5, 1, 1)),
-      ShaderInstance(model: .translate(.init(0, -1, 0)) * .scale(.init(10, 0.1, 10)), color: .init(1, 1, 1, 1)),
-      ShaderInstance(model: .translate(.init(-2.5, 0, -3)), color: .init(1, 0.5, 0.75, 1)),
-      ShaderInstance(model: .translate(.init(-2.5, -0.5, -5)), color: .init(0.75, 1, 1, 1))
-    ]
-
-    time += 0.025
-
-    var uniforms = ShaderUniforms(projView: projection * view)
-
+  func beginFrame() throws {
     // Lock the semaphore here if too many frames are "in flight"
     _ = inFlightSemaphore.wait(timeout: .distantFuture)
 
     guard let rt = layer.nextDrawable() else {
       throw RendererError.drawFailure("Failed to get next drawable render target")
     }
+    self._rt = rt
 
-    passDescription.colorAttachments[0].texture = rt.texture
-    passDescription.depthAttachment.texture = self.depthTextures[self.frame]
+    passDescription.colorAttachments[0].texture = self._rt.texture
+    passDescription.depthAttachment.texture = self.depthTextures[self.currentFrame]
 
     guard let commandBuf: MTLCommandBuffer = queue.makeCommandBuffer() else {
       throw RendererError.drawFailure("Failed to make command buffer from queue")
     }
-    commandBuf.addCompletedHandler { _ in
+    self._commandBuf = commandBuf
+    self._commandBuf.addCompletedHandler { _ in
       self.inFlightSemaphore.signal()
     }
 
-    guard let encoder = commandBuf.makeRenderCommandEncoder(descriptor: passDescription) else {
+    guard let encoder = self._commandBuf.makeRenderCommandEncoder(descriptor: passDescription) else {
       throw RendererError.drawFailure("Failed to make render encoder from command buffer")
     }
+    self._encoder = encoder
 
-    encoder.setCullMode(.back)
-    encoder.setFrontFacing(.counterClockwise)  // OpenGL default
-    encoder.setViewport(viewport)
-    encoder.setRenderPipelineState(pso)
-    encoder.setDepthStencilState(depthStencilState)
+    self._encoder.setCullMode(.back)
+    self._encoder.setFrontFacing(.counterClockwise)  // OpenGL default
+    self._encoder.setViewport(Self.makeViewport(rect: self.frame))
+    self._encoder.setRenderPipelineState(pso)
+    self._encoder.setDepthStencilState(depthStencilState)
 
-    encoder.setFragmentTexture(cubeTexture ?? defaultTexture, index: 0)
-    encoder.setVertexBuffer(vtxBuffer,
+    self._encoder.setFragmentTexture(cubeTexture ?? defaultTexture, index: 0)
+  }
+
+  func batch(instances: [Instance], camera: Camera) {
+    assert(instances.count < 52)
+
+    var uniforms = ShaderUniforms(projView: camera.viewProjection)
+    let instances = instances.map { (instance: Instance) -> ShaderInstance in
+      ShaderInstance(
+        model:
+          .translate(instance.position) *
+          matrix_float4x4(instance.rotation) *
+          .scale(instance.scale),
+        color: .init(
+          UInt8(instance.color.x * 0xFF),
+          UInt8(instance.color.y * 0xFF),
+          UInt8(instance.color.z * 0xFF),
+          UInt8(instance.color.w * 0xFF)))
+    }
+
+    self._encoder.setVertexBuffer(vtxBuffer,
       offset: 0,
       index: ShaderInputIdx.vertices.rawValue)
 
     // Ideal as long as our uniforms total 4 KB or less
-    encoder.setVertexBytes(instances,
+    self._encoder.setVertexBytes(instances,
       length: instances.count * MemoryLayout<ShaderInstance>.stride,
       index: ShaderInputIdx.instance.rawValue)
-    encoder.setVertexBytes(&uniforms,
+    self._encoder.setVertexBytes(&uniforms,
       length: MemoryLayout<ShaderUniforms>.stride,
       index: ShaderInputIdx.uniforms.rawValue)
 
-    encoder.drawIndexedPrimitives(
+    self._encoder.drawIndexedPrimitives(
       type: .triangle,
       indexCount: cubeIndices.count,
       indexType: .uint16,
       indexBuffer: idxBuffer,
       indexBufferOffset: 0,
       instanceCount: instances.count)
+  }
 
-    encoder.endEncoding()
-    commandBuf.present(rt)
-    commandBuf.commit()
+  func endFrame() {
+    self._encoder.endEncoding()
+    self._commandBuf.present(self._rt)
+    self._commandBuf.commit()
 
-    self.frame &+= 1
-    if self.frame == numFramesInFlight {
-      self.frame = 0
+    self._rt = nil
+    self._encoder = nil
+    self._commandBuf = nil
+
+    self.currentFrame &+= 1
+    if self.currentFrame == numFramesInFlight {
+      self.currentFrame = 0
     }
   }
 }

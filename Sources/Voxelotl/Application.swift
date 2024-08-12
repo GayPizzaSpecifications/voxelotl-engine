@@ -4,16 +4,17 @@ import QuartzCore.CAMetalLayer
 
 public class Application {
   private let cfg: ApplicationConfiguration
+  private let del: GameDelegate
 
   private var window: OpaquePointer? = nil
   private var view: SDL_MetalView? = nil
   private var renderer: Renderer? = nil
   private var lastCounter: UInt64 = 0
-  private var fpsCalculator = FPSCalculator()
+  private var time: Duration = .zero
 
-
-  public init(configuration: ApplicationConfiguration) {
+  public init(delegate: GameDelegate, configuration: ApplicationConfiguration) {
     self.cfg = configuration
+    self.del = delegate
   }
 
   private func initialize() -> ApplicationExecutionState {
@@ -48,7 +49,7 @@ public class Application {
     do {
       let layer = unsafeBitCast(SDL_Metal_GetLayer(view), to: CAMetalLayer.self)
       layer.displaySyncEnabled = cfg.vsyncMode == .off ? false : true
-      self.renderer = try Renderer(layer: layer, size: SIMD2<Int>(Int(backBufferWidth), Int(backBufferHeight)))
+      self.renderer = try Renderer(layer: layer, size: .init(Int(backBufferWidth), Int(backBufferHeight)))
     } catch RendererError.initFailure(let message) {
       printErr("Renderer init error: \(message)")
       return .exitFailure
@@ -103,8 +104,9 @@ public class Application {
       return .running
 
     case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
-      let backBufferSize = SIMD2(Int(event.window.data1), Int(event.window.data2))
-      renderer!.resize(size: backBufferSize)
+      let backBufferSize = Size(Int(event.window.data1), Int(event.window.data2))
+      self.renderer!.resize(size: backBufferSize)
+      self.del.resize(backBufferSize)
       return .running
 
     default:
@@ -112,13 +114,17 @@ public class Application {
     }
   }
 
-  private func update(_ deltaTime: Double) -> ApplicationExecutionState {
-    fpsCalculator.frame(deltaTime: deltaTime) { fps in
-      print("FPS: \(fps)")
-    }
+  private func update() -> ApplicationExecutionState {
+    let deltaTime = getDeltaTime()
+    time += deltaTime
+    let gameTime = GameTime(total: time, delta: deltaTime)
+
+    del.update(gameTime)
 
     do {
-      try renderer!.paint()
+      try renderer!.beginFrame()
+      del.draw(renderer!, gameTime)
+      renderer!.endFrame()
     } catch RendererError.drawFailure(let message) {
       printErr("Renderer draw error: \(message)")
       return .exitFailure
@@ -130,11 +136,14 @@ public class Application {
     return .running
   }
 
-  private func getDeltaTime() -> Double {
+  private func getDeltaTime() -> Duration {
     let counter = SDL_GetPerformanceCounter()
-    let divisor = 1.0 / Double(SDL_GetPerformanceFrequency())
-    defer { lastCounter = counter }
-    return Double(counter &- lastCounter) * divisor
+    defer {
+      lastCounter = counter
+    }
+    let difference = Double(counter &- lastCounter)
+    let divisor = Double(SDL_GetPerformanceFrequency())
+    return Duration.seconds(difference / divisor)
   }
 
   func run() -> Int32 {
@@ -149,9 +158,7 @@ public class Application {
           break quit
         }
       }
-
-      let deltaTime = getDeltaTime()
-      res = update(deltaTime)
+      res = update()
     }
 
     return res == .exitSuccess ? 0 : 1

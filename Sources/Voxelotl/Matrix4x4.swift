@@ -68,24 +68,28 @@ public extension simd_float4x4 {
     let x = 2 * invWidth, y = 2 * invHeight, z = invDepth
 
     return .init(
-    .init( x,  0,  0, 0),
-    .init( 0,  y,  0, 0),
-    .init( 0,  0,  z, 0),
-    .init(tx, ty, tz, 1))
+      .init( x,  0,  0, 0),
+      .init( 0,  y,  0, 0),
+      .init( 0,  0,  z, 0),
+      .init(tx, ty, tz, 1))
   }
 
-  static func perspective(verticalFov fovY: T, aspect: T, near: T, far: T) -> Self {
+  static func perspective(verticalFov fovY: T, aspect: T, near zNear: T, far zFar: T) -> Self {
     let tanHalfFovY = tan(fovY * T(0.5))
-    let invClipRange = 1 / (near - far)
+    let invClipRange = 1 / (zNear - zFar)
 
     let y = 1 / tanHalfFovY
     let x = y / aspect
-    let z = far * invClipRange
-    let w = near * z // (far * near) * invClipRange
+    let z = zFar * invClipRange
+    let w = zNear * z
     return .init(
       .init(x, 0, 0,  0),
       .init(0, y, 0,  0),
       .init(0, 0, z, -1),
       .init(0, 0, w,  0))
   }
+}
+
+extension simd_quatf {
+  static var identity: Self { .init(real: 1, imag: .zero) }
 }

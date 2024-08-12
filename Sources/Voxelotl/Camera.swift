@@ -1,37 +1,113 @@
 import simd
 
-struct Camera {
-  private var position = SIMD3<Float>.zero
-  private var rotation = SIMD2<Float>.zero
+public final class Camera {
+  private struct Dirty: OptionSet {
+    let rawValue: UInt8
 
-  var view: matrix_float4x4 {
-    .rotate(yawPitch: rotation) * .translate(-position)
+    static let projection = Self(rawValue: 1 << 0)
+    static let view       = Self(rawValue: 1 << 1)
+    static let viewProj   = Self(rawValue: 1 << 2)
   }
 
-  mutating func update(deltaTime: Float) {
-    if let pad = GameController.current?.state {
-      let turning = pad.rightStick.radialDeadzone(min: 0.1, max: 1)
-      rotation += turning * deltaTime
-      if rotation.x < 0.0 {
-        rotation.x += .pi * 2
-      } else if rotation.x > .pi * 2 {
-        rotation.x -= .pi * 2
-      }
-      rotation.y = rotation.y.clamp(-.pi * 0.5, .pi * 0.5)
+  private var _position: SIMD3<Float>
+  private var _rotation: simd_quatf
+  private var _fieldOfView: Float
+  private var _aspectRatio: Float
+  private var _zNearFar: ClosedRange<Float>
 
-      let movement = pad.leftStick.cardinalDeadzone(min: 0.1, max: 1)
+  private var _dirty: Dirty
+  private var _projection: matrix_float4x4
+  private var _view: matrix_float4x4
+  private var _viewProjection: matrix_float4x4
 
-      let rotc = cos(rotation.x), rots = sin(rotation.x)
-      position += .init(
-        movement.x * rotc - movement.y * rots,
-        0,
-        movement.y * rotc + movement.x * rots
-      ) * deltaTime
-
-      if pad.pressed(.back) {
-        position = .zero
-        rotation = .zero
+  public var position: SIMD3<Float> {
+    get { self._position }
+    set(position) {
+      if self._position != position {
+        self._position = position
+        self._dirty.insert(.view)
       }
     }
+  }
+
+  public var rotation: simd_quatf {
+    get { self._rotation }
+    set(rotation) {
+      if self._rotation != rotation {
+        self._rotation = rotation
+        self._dirty.insert(.view)
+      }
+    }
+  }
+
+  public var fieldOfView: Float {
+    get { self._fieldOfView.degrees }
+    set(fov) {
+      let fovRad = fov.radians
+      self._fieldOfView = fovRad
+      self._dirty.insert(.projection)
+    }
+  }
+
+  public var aspectRatio: Float {
+    get { self._aspectRatio }
+    set(aspect) {
+      if self._aspectRatio != aspect {
+        self._aspectRatio = aspect
+        self._dirty.insert(.projection)
+      }
+    }
+  }
+
+  public func setSize(_ size: Size<Int>) {
+    self.aspectRatio = Float(size.w) / Float(size.h)
+  }
+
+  public var range: ClosedRange<Float> {
+    get { self._zNearFar }
+    set(range) {
+      self._zNearFar = range
+      self._dirty.insert(.projection)
+    }
+  }
+
+  public var projection: matrix_float4x4 {
+    if self._dirty.contains(.projection) {
+      self._projection = .perspective(
+        verticalFov: self._fieldOfView,
+        aspect: self._aspectRatio,
+        near: self._zNearFar.lowerBound,
+        far: self._zNearFar.upperBound)
+      self._dirty.remove(.projection)
+      self._dirty.insert(.viewProj)
+    }
+    return self._projection
+  }
+  public var view: matrix_float4x4 {
+    if self._dirty.contains(.view) {
+      self._view = matrix_float4x4(rotation) * .translate(-position)
+      self._dirty.remove(.view)
+      self._dirty.insert(.viewProj)
+    }
+    return self._view
+  }
+  public var viewProjection: matrix_float4x4 {
+    if !self._dirty.isEmpty {
+      self._viewProjection = self.projection * self.view
+      self._dirty.remove(.viewProj)
+    }
+    return self._viewProjection
+  }
+
+  init(fov: Float, size: Size<Int>, range: ClosedRange<Float>) {
+    self._position = .zero
+    self._rotation = .identity
+    self._fieldOfView = fov.radians
+    self._aspectRatio = Float(size.w) / Float(size.h)
+    self._zNearFar = range
+    self._dirty = [ .projection, .view, .viewProj ]
+    self._projection = .init()
+    self._view = .init()
+    self._viewProjection = .init()
   }
 }
