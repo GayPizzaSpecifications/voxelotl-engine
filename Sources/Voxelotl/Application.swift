@@ -31,15 +31,15 @@ public class Application {
     if cfg.flags.contains(.highDPI) {
       windowFlags |= SDL_WindowFlags(SDL_WINDOW_HIGH_PIXEL_DENSITY)
     }
-    window = SDL_CreateWindow(cfg.title, cfg.width, cfg.height, windowFlags)
+    window = SDL_CreateWindow(cfg.title, cfg.frame.w, cfg.frame.h, windowFlags)
     guard window != nil else {
       printErr("SDL_CreateWindow() error: \(String(cString: SDL_GetError()))")
       return .exitFailure
     }
 
     // Get window metrics
-    var backBufferWidth: Int32 = 0, backBufferHeight: Int32 = 0
-    guard SDL_GetWindowSizeInPixels(window, &backBufferWidth, &backBufferHeight) >= 0 else {
+    var backBuffer = Size<Int32>.zero
+    guard SDL_GetWindowSizeInPixels(window, &backBuffer.w, &backBuffer.h) >= 0 else {
       printErr("SDL_GetWindowSizeInPixels() error: \(String(cString: SDL_GetError()))")
       return .exitFailure
     }
@@ -49,7 +49,7 @@ public class Application {
     do {
       let layer = unsafeBitCast(SDL_Metal_GetLayer(view), to: CAMetalLayer.self)
       layer.displaySyncEnabled = cfg.vsyncMode == .off ? false : true
-      self.renderer = try Renderer(layer: layer, size: .init(Int(backBufferWidth), Int(backBufferHeight)))
+      self.renderer = try Renderer(layer: layer, size: Size<Int>(backBuffer))
     } catch RendererError.initFailure(let message) {
       printErr("Renderer init error: \(message)")
       return .exitFailure
@@ -122,9 +122,9 @@ public class Application {
     del.update(gameTime)
 
     do {
-      try renderer!.beginFrame()
-      del.draw(renderer!, gameTime)
-      renderer!.endFrame()
+      try renderer!.newFrame {
+        del.draw($0, gameTime)
+      }
     } catch RendererError.drawFailure(let message) {
       printErr("Renderer draw error: \(message)")
       return .exitFailure
@@ -182,15 +182,13 @@ public struct ApplicationConfiguration {
     case adaptive
   }
 
-  let width: Int32
-  let height: Int32
+  let frame: Size<Int32>
   let title: String
   let flags: Flags
   let vsyncMode: VSyncMode
 
-  public init(width: Int32, height: Int32, title: String, flags: Flags, vsyncMode: VSyncMode) {
-    self.width = width
-    self.height = height
+  public init(frame: Size<Int32>, title: String, flags: Flags, vsyncMode: VSyncMode) {
+    self.frame = frame
     self.title = title
     self.flags = flags
     self.vsyncMode = vsyncMode

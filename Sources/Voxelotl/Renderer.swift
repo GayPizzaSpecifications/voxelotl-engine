@@ -55,9 +55,7 @@ public class Renderer {
   private var depthStencilState: MTLDepthStencilState
   private var depthTextures: [MTLTexture]
 
-  private var _commandBuf: MTLCommandBuffer!
-  private var _encoder: MTLRenderCommandEncoder!
-  private var _rt: (any CAMetalDrawable)!
+  private var _encoder: MTLRenderCommandEncoder! = nil
 
   private var vtxBuffer: MTLBuffer, idxBuffer: MTLBuffer
   private var defaultTexture: MTLTexture
@@ -201,71 +199,75 @@ public class Renderer {
   }
 
   static func loadTexture(_ device: MTLDevice, _ queue: MTLCommandQueue, image2D image: Image2D) throws -> MTLTexture {
-    let texDesc = MTLTextureDescriptor()
-    texDesc.width  = image.width
-    texDesc.height = image.height
-    texDesc.pixelFormat = .rgba8Unorm_srgb
-    texDesc.textureType = .type2D
-    texDesc.storageMode = .private
-    texDesc.usage = .shaderRead
-    guard let newTexture = device.makeTexture(descriptor: texDesc) else {
-      throw RendererError.loadFailure("Failed to create texture descriptor")
+    try autoreleasepool {
+      let texDesc = MTLTextureDescriptor()
+      texDesc.width  = image.width
+      texDesc.height = image.height
+      texDesc.pixelFormat = .rgba8Unorm_srgb
+      texDesc.textureType = .type2D
+      texDesc.storageMode = .private
+      texDesc.usage = .shaderRead
+      guard let newTexture = device.makeTexture(descriptor: texDesc) else {
+        throw RendererError.loadFailure("Failed to create texture descriptor")
+      }
+
+      guard let texData = image.data.withUnsafeBytes({ bytes in
+        device.makeBuffer(bytes: bytes.baseAddress!, length: bytes.count, options: [ .storageModeShared ])
+      }) else {
+        throw RendererError.loadFailure("Failed to create shared texture data buffer")
+      }
+
+      guard let cmdBuffer = queue.makeCommandBuffer(),
+        let blitEncoder = cmdBuffer.makeBlitCommandEncoder()
+      else {
+        throw RendererError.loadFailure("Failed to create blit command encoder")
+      }
+
+      blitEncoder.copy(
+        from: texData,
+        sourceOffset: 0,
+        sourceBytesPerRow: image.stride,
+        sourceBytesPerImage: image.stride * image.height,
+        sourceSize: .init(width: image.width, height: image.height, depth: 1),
+
+        to: newTexture,
+        destinationSlice: 0,
+        destinationLevel: 0,
+        destinationOrigin: .init(x: 0, y: 0, z: 0))
+      blitEncoder.endEncoding()
+
+      cmdBuffer.addCompletedHandler { _ in
+        //FIXME: look into if this needs to be synchronised
+        //printErr("Texture was added?")
+      }
+      cmdBuffer.commit()
+
+      return newTexture
     }
-
-    guard let texData = image.data.withUnsafeBytes({ bytes in
-      device.makeBuffer(bytes: bytes.baseAddress!, length: bytes.count, options: [ .storageModeShared ])
-    }) else {
-      throw RendererError.loadFailure("Failed to create shared texture data buffer")
-    }
-
-    guard let cmdBuffer = queue.makeCommandBuffer(),
-      let blitEncoder = cmdBuffer.makeBlitCommandEncoder()
-    else {
-      throw RendererError.loadFailure("Failed to create blit command encoder")
-    }
-
-    blitEncoder.copy(
-      from: texData,
-      sourceOffset: 0,
-      sourceBytesPerRow: image.stride,
-      sourceBytesPerImage: image.stride * image.height,
-      sourceSize: .init(width: image.width, height: image.height, depth: 1),
-
-      to: newTexture,
-      destinationSlice: 0,
-      destinationLevel: 0,
-      destinationOrigin: .init(x: 0, y: 0, z: 0))
-    blitEncoder.endEncoding()
-
-    cmdBuffer.addCompletedHandler { _ in
-      //FIXME: look into if this needs to be synchronised
-      //printErr("Texture was added?")
-    }
-    cmdBuffer.commit()
-
-    return newTexture
   }
 
   private static func createDepthTexture(_ device: MTLDevice, _ size: Size<Int>, format: MTLPixelFormat
   ) -> MTLTexture? {
-    let texDescriptor = MTLTextureDescriptor.texture2DDescriptor(
-      pixelFormat: format,
-      width:       size.w,
-      height:      size.h,
-      mipmapped:   false)
-    texDescriptor.depth = 1
-    texDescriptor.sampleCount = 1
-    texDescriptor.usage       = [ .renderTarget, .shaderRead ]
-#if !NDEBUG
-    texDescriptor.storageMode = .private
-#else
-    texDescriptor.storageMode = .memoryless
-#endif
+    autoreleasepool {
+      let texDescriptor = MTLTextureDescriptor.texture2DDescriptor(
+        pixelFormat: format,
+        width:       size.w,
+        height:      size.h,
+        mipmapped:   false)
+      texDescriptor.depth = 1
+      texDescriptor.sampleCount = 1
+      texDescriptor.usage       = [ .renderTarget, .shaderRead ]
+  #if !NDEBUG
+      texDescriptor.storageMode = .private
+  #else
+      texDescriptor.storageMode = .memoryless
+  #endif
 
-    guard let depthStencilTexture = device.makeTexture(descriptor: texDescriptor) else { return nil }
-    depthStencilTexture.label = "Depth buffer"
+      guard let depthStencilTexture = device.makeTexture(descriptor: texDescriptor) else { return nil }
+      depthStencilTexture.label = "Depth buffer"
 
-    return depthStencilTexture
+      return depthStencilTexture
+    }
   }
 
   static func makeViewport(rect: Rect<Int>, znear: Double = 0.0, zfar: Double = 1.0) -> MTLViewport {
@@ -288,41 +290,56 @@ public class Renderer {
     self._aspectRatio = Float(self.backBufferSize.w) / Float(self.backBufferSize.h)
   }
 
-  func beginFrame() throws {
-    // Lock the semaphore here if too many frames are "in flight"
-    _ = inFlightSemaphore.wait(timeout: .distantFuture)
+  func newFrame(_ frameFunc: (Renderer) -> Void) throws {
+    try autoreleasepool {
+      guard let rt = layer.nextDrawable() else {
+        throw RendererError.drawFailure("Failed to get next drawable render target")
+      }
 
-    guard let rt = layer.nextDrawable() else {
-      throw RendererError.drawFailure("Failed to get next drawable render target")
+      passDescription.colorAttachments[0].texture = rt.texture
+      passDescription.depthAttachment.texture = self.depthTextures[self.currentFrame]
+
+      // Lock the semaphore here if too many frames are "in flight"
+      _ = inFlightSemaphore.wait(timeout: .distantFuture)
+
+      guard let commandBuf: MTLCommandBuffer = queue.makeCommandBuffer() else {
+        throw RendererError.drawFailure("Failed to make command buffer from queue")
+      }
+      commandBuf.addCompletedHandler { _ in
+        self.inFlightSemaphore.signal()
+      }
+
+      guard let encoder = commandBuf.makeRenderCommandEncoder(descriptor: passDescription) else {
+        throw RendererError.drawFailure("Failed to make render encoder from command buffer")
+      }
+
+      encoder.setCullMode(.back)
+      encoder.setFrontFacing(.counterClockwise)  // OpenGL default
+      encoder.setViewport(Self.makeViewport(rect: self.frame))
+      encoder.setRenderPipelineState(pso)
+      encoder.setDepthStencilState(depthStencilState)
+      encoder.setFragmentTexture(cubeTexture ?? defaultTexture, index: 0)
+      encoder.setVertexBuffer(vtxBuffer,
+        offset: 0,
+        index: ShaderInputIdx.vertices.rawValue)
+
+      self._encoder = encoder
+      frameFunc(self)
+      self._encoder = nil
+
+      encoder.endEncoding()
+      commandBuf.present(rt)
+      commandBuf.commit()
+
+      self.currentFrame &+= 1
+      if self.currentFrame == numFramesInFlight {
+        self.currentFrame = 0
+      }
     }
-    self._rt = rt
-
-    passDescription.colorAttachments[0].texture = self._rt.texture
-    passDescription.depthAttachment.texture = self.depthTextures[self.currentFrame]
-
-    guard let commandBuf: MTLCommandBuffer = queue.makeCommandBuffer() else {
-      throw RendererError.drawFailure("Failed to make command buffer from queue")
-    }
-    self._commandBuf = commandBuf
-    self._commandBuf.addCompletedHandler { _ in
-      self.inFlightSemaphore.signal()
-    }
-
-    guard let encoder = self._commandBuf.makeRenderCommandEncoder(descriptor: passDescription) else {
-      throw RendererError.drawFailure("Failed to make render encoder from command buffer")
-    }
-    self._encoder = encoder
-
-    self._encoder.setCullMode(.back)
-    self._encoder.setFrontFacing(.counterClockwise)  // OpenGL default
-    self._encoder.setViewport(Self.makeViewport(rect: self.frame))
-    self._encoder.setRenderPipelineState(pso)
-    self._encoder.setDepthStencilState(depthStencilState)
-
-    self._encoder.setFragmentTexture(cubeTexture ?? defaultTexture, index: 0)
   }
 
   func batch(instances: [Instance], camera: Camera) {
+    assert(self._encoder != nil, "batch can't be called outside of a frame being rendered")
     assert(instances.count < 52)
 
     var uniforms = ShaderUniforms(projView: camera.viewProjection)
@@ -339,10 +356,6 @@ public class Renderer {
           UInt8(instance.color.w * 0xFF)))
     }
 
-    self._encoder.setVertexBuffer(vtxBuffer,
-      offset: 0,
-      index: ShaderInputIdx.vertices.rawValue)
-
     // Ideal as long as our uniforms total 4 KB or less
     self._encoder.setVertexBytes(instances,
       length: instances.count * MemoryLayout<ShaderInstance>.stride,
@@ -358,21 +371,6 @@ public class Renderer {
       indexBuffer: idxBuffer,
       indexBufferOffset: 0,
       instanceCount: instances.count)
-  }
-
-  func endFrame() {
-    self._encoder.endEncoding()
-    self._commandBuf.present(self._rt)
-    self._commandBuf.commit()
-
-    self._rt = nil
-    self._encoder = nil
-    self._commandBuf = nil
-
-    self.currentFrame &+= 1
-    if self.currentFrame == numFramesInFlight {
-      self.currentFrame = 0
-    }
   }
 }
 

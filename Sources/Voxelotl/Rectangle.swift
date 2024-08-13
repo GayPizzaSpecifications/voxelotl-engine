@@ -42,6 +42,10 @@ public struct Size<T: AdditiveArithmetic>: Equatable {
 
 extension Size where T: BinaryInteger {
   static var one: Self { .init(T(1), T(1)) }
+
+  init<O>(_ other: Size<O>) where O: BinaryInteger {
+    self.init(T(other.w), T(other.h))
+  }
 }
 
 struct Rect<T: AdditiveArithmetic>: Equatable {
