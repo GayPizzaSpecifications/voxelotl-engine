@@ -42,10 +42,11 @@ class Game: GameDelegate {
   }
 
   func update(_ time: GameTime) {
-    let deltaTime = Float(time.delta.asFloat)
     fpsCalculator.frame(deltaTime: time.delta) { fps in
       print("FPS: \(fps)")
     }
+
+    let deltaTime = min(Float(time.delta.asFloat), 1.0 / 15)
 
     player.update(deltaTime: deltaTime, boxes: boxes)
     camera.position = player.position
