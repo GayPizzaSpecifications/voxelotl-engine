@@ -350,10 +350,10 @@ public class Renderer {
           matrix_float4x4(instance.rotation) *
           .scale(instance.scale),
         color: .init(
-          UInt8(instance.color.x * 0xFF),
-          UInt8(instance.color.y * 0xFF),
-          UInt8(instance.color.z * 0xFF),
-          UInt8(instance.color.w * 0xFF)))
+          UInt8(truncating: NSNumber(value: instance.color.x * 0xFF)),
+          UInt8(truncating: NSNumber(value: instance.color.y * 0xFF)),
+          UInt8(truncating: NSNumber(value: instance.color.z * 0xFF)),
+          UInt8(truncating: NSNumber(value: instance.color.w * 0xFF))))
     }
 
     // Ideal as long as our uniforms total 4 KB or less

@@ -192,6 +192,8 @@ public extension GameController.Pad.State {
   var rightStick: SIMD2<Float> {
     .init(axis(.rightStickX), axis(.rightStickY))
   }
+  var leftTrigger: Float { axis(.leftTrigger) }
+  var rightTrigger: Float { axis(.rightTrigger) }
 }
 
 public extension FloatingPoint {

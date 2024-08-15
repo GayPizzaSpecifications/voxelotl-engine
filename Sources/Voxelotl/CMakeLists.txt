@@ -9,6 +9,7 @@ add_executable(Voxelotl MACOSX_BUNDLE
   FloatExtensions.swift
   Matrix4x4.swift
   Rectangle.swift
+  AABB.swift
 
   NSImageLoader.swift
   Renderer.swift
