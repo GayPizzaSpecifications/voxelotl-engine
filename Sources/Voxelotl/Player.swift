@@ -10,7 +10,8 @@ struct Player {
   static let eyeLevel: Float = 1.4
   static let epsilon = Float.ulpOfOne * 10
 
-  static let speedCoeff: Float = 720
+  static let speedCoeff: Float = 75
+  static let frictionCoeff: Float = 12.5
   static let gravityCoeff: Float = 12
   static let jumpVelocity: Float = 9
 
@@ -79,10 +80,8 @@ struct Player {
     if let aabb = checkCollision(self._position) {
       if _velocity.x < 0 {
         self._position.x = aabb.right + Self.radius + Self.epsilon
-        printErr("-x")
       } else {
         self._position.x = aabb.left - Self.radius - Self.epsilon
-        printErr("+x")
       }
       self._velocity.x = 0
     }
@@ -90,10 +89,8 @@ struct Player {
     if let aabb = checkCollision(self._position) {
       if _velocity.z < 0 {
         self._position.z = aabb.near + Self.radius + Self.epsilon
-        printErr("-x")
       } else {
         self._position.z = aabb.far - Self.radius - Self.epsilon
-        printErr("+x")
       }
       self._velocity.z = 0
     }
@@ -101,12 +98,10 @@ struct Player {
     if let aabb = checkCollision(self._position) {
       if _velocity.y < 0 {
         self._position.y = aabb.top + Self.epsilon
-        if !self._onGround { printErr("-y") }
         self._onGround = true
       } else {
         self._position.y = aabb.bottom - Self.height - Self.epsilon
         self._onGround = false
-        printErr("+y")
       }
       self._velocity.y = 0
     } else {
@@ -115,8 +110,8 @@ struct Player {
 
     // Ground friction
     if self._onGround {
-      self._velocity.x *= 25 * deltaTime
-      self._velocity.z *= 25 * deltaTime
+      self._velocity.x -= self._velocity.x * Self.frictionCoeff * deltaTime
+      self._velocity.z -= self._velocity.z * Self.frictionCoeff * deltaTime
     }
   }
 }
