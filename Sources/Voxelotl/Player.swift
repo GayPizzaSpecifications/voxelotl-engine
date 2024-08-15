@@ -10,8 +10,7 @@ struct Player {
   static let eyeLevel: Float = 1.4
   static let epsilon = Float.ulpOfOne * 10
 
-  static let speedCoeff: Float = 75
-  static let frictionCoeff: Float = 12.5
+  static let accelerationCoeff: Float = 7.5
   static let gravityCoeff: Float = 12
   static let jumpVelocity: Float = 9
 
@@ -41,8 +40,8 @@ struct Player {
         // Movement on ground
         let movement = pad.leftStick.cardinalDeadzone(min: 0.1, max: 1)
         let rotc = cos(self._rotation.x), rots = sin(self._rotation.x)
-        self._velocity.x += (movement.x * rotc - movement.y * rots) * Self.speedCoeff * deltaTime
-        self._velocity.z += (movement.y * rotc + movement.x * rots) * Self.speedCoeff * deltaTime
+        self._velocity.x = (movement.x * rotc - movement.y * rots) * Self.accelerationCoeff
+        self._velocity.z = (movement.y * rotc + movement.x * rots) * Self.accelerationCoeff
 
         // Jumping
         if pad.pressed(.east) {
@@ -110,8 +109,8 @@ struct Player {
 
     // Ground friction
     if self._onGround {
-      self._velocity.x -= self._velocity.x * Self.frictionCoeff * deltaTime
-      self._velocity.z -= self._velocity.z * Self.frictionCoeff * deltaTime
+      self._velocity.x = 0
+      self._velocity.z = 0
     }
   }
 }
