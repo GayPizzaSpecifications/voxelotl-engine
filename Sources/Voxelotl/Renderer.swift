@@ -41,7 +41,9 @@ fileprivate let cubeIndices: [UInt16] = [
 ]
 
 fileprivate let numFramesInFlight: Int = 3
+fileprivate let colorFormat: MTLPixelFormat = .bgra8Unorm_srgb
 fileprivate let depthFormat: MTLPixelFormat = .depth16Unorm
+fileprivate let clearColor: Color<Double> = .black.mix(.white, 0.1).linear
 
 public class Renderer {
   private var device: MTLDevice
@@ -86,7 +88,7 @@ public class Renderer {
     self.device = device
 
     layer.device = device
-    layer.pixelFormat = MTLPixelFormat.bgra8Unorm
+    layer.pixelFormat = colorFormat
 
     // Setup command queue
     guard let queue = device.makeCommandQueue() else {
@@ -99,7 +101,7 @@ public class Renderer {
 
     passDescription.colorAttachments[0].loadAction  = .clear
     passDescription.colorAttachments[0].storeAction = .store
-    passDescription.colorAttachments[0].clearColor  = MTLClearColorMake(0.1, 0.1, 0.1, 1.0)
+    passDescription.colorAttachments[0].clearColor  = MTLClearColor(clearColor)
     passDescription.depthAttachment.loadAction  = .clear
     passDescription.depthAttachment.storeAction = .dontCare
     passDescription.depthAttachment.clearDepth  = 1.0
@@ -349,11 +351,7 @@ public class Renderer {
           .translate(instance.position) *
           matrix_float4x4(instance.rotation) *
           .scale(instance.scale),
-        color: .init(
-          UInt8(truncating: NSNumber(value: instance.color.x * 0xFF)),
-          UInt8(truncating: NSNumber(value: instance.color.y * 0xFF)),
-          UInt8(truncating: NSNumber(value: instance.color.z * 0xFF)),
-          UInt8(truncating: NSNumber(value: instance.color.w * 0xFF))))
+        color: SIMD4(Color<UInt8>(instance.color)))
     }
 
     // Ideal as long as our uniforms total 4 KB or less
@@ -371,6 +369,12 @@ public class Renderer {
       indexBuffer: idxBuffer,
       indexBufferOffset: 0,
       instanceCount: instances.count)
+  }
+}
+
+extension MTLClearColor {
+  init(_ color: Color<Double>) {
+    self.init(red: color.r, green: color.g, blue: color.b, alpha: color.a)
   }
 }
 

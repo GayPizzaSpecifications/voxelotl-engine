@@ -6,5 +6,5 @@ public extension FloatingPoint {
   @inline(__always) func mlerp(_ a: Self, _ b: Self) -> Self { a + (b - a) * self }
 
   @inline(__always) func clamp(_ a: Self, _ b: Self) -> Self { min(max(self, a), b) }
-  @inline(__always) func saturate() -> Self { self.clamp(0, 1) }
+  @inline(__always) var saturated: Self { self.clamp(0, 1) }
 }

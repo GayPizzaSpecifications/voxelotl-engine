@@ -10,6 +10,7 @@ add_executable(Voxelotl MACOSX_BUNDLE
   Matrix4x4.swift
   Rectangle.swift
   AABB.swift
+  Color.swift
 
   NSImageLoader.swift
   Renderer.swift

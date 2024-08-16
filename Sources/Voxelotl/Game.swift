@@ -2,20 +2,20 @@ import simd
 
 struct Box {
   var geometry: AABB
-  var color: SIMD4<Float> = .one
+  var color: Color<Float16> = .white
 }
 
 struct Instance {
   let position: SIMD3<Float>
   let scale: SIMD3<Float>
   let rotation: simd_quatf
-  let color: SIMD4<Float>
+  let color: Color<Float16>
 
   init(
     position: SIMD3<Float> = .zero,
     scale: SIMD3<Float> = .one,
     rotation: simd_quatf = .identity,
-    color: SIMD4<Float> = .one
+    color: Color<Float16> = .white
   ) {
     self.position = position
     self.scale = scale
@@ -25,13 +25,20 @@ struct Instance {
 }
 
 let boxes: [Box] = [
-  Box(geometry: .fromUnitCube(position: .init(0, -1, 0) * 2, scale: .init(10, 0.1, 10) * 2)),
-  Box(geometry: .fromUnitCube(position: .init(-2.5, 0, -3) * 2, scale: .init(repeating: 2)), color: .init(1, 0.5, 0.75, 1)),
-  Box(geometry: .fromUnitCube(position: .init(-2.5, -0.5, -5) * 2, scale: .init(repeating: 2)), color: .init(0.75, 1, 1, 1))
+  Box(geometry: .fromUnitCube(
+    position: .init( 0,  -1,  0) * 2,
+    scale:    .init(10, 0.1, 10) * 2)),
+  Box(geometry: .fromUnitCube(
+    position: .init(-2.5, 0, -3) * 2,
+    scale:    .init(repeating: 2)),
+    color:    .init(rgb888: 0xFF80BF).linear),
+  Box(geometry: .fromUnitCube(
+    position: .init(-2.5, -0.5, -5) * 2,
+    scale:    .init(repeating: 2)),
+    color:    .init(rgb888: 0xBFFFFF).linear)
 ]
 
 class Game: GameDelegate {
-
   private var fpsCalculator = FPSCalculator()
   var camera = Camera(fov: 60, size: .one, range: 0.06...50)
   var player = Player()
@@ -61,15 +68,15 @@ class Game: GameDelegate {
     var instances: [Instance] = boxes.map {
       Instance(
         position: $0.geometry.center,
-        scale: $0.geometry.size * 0.5,
-        color: $0.color)
+        scale:    $0.geometry.size * 0.5,
+        color:    $0.color)
     }
     instances.append(
       Instance(
         position: .init(0, sin(totalTime * 1.5) * 0.5, -2) * 2,
-        scale: .init(repeating: 0.5),
+        scale:    .init(repeating: 0.5),
         rotation: .init(angle: totalTime * 3.0, axis: .init(0, 1, 0)),
-        color: .init(0.5, 0.5, 1, 1)))
+        color:    .init(r: 0.5, g: 0.5, b: 1).linear))
     renderer.batch(instances: instances, camera: self.camera)
   }
 
