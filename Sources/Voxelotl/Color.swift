@@ -46,21 +46,16 @@ public extension Color where T: FixedWidthInteger {
   init(r newR: T, g newG: T, b newB: T) {
     self.init(r: newR, g: newG, b: newB, a: Self.one)
   }
+}
 
+public extension Color where T: UnsignedInteger & FixedWidthInteger {
   init<U: BinaryFloatingPoint>(_ other: Color<U>) {
     self.init(
-      r: T((other.r * U(0xFF)).clamp(0, 0xFF)),
-      g: T((other.g * U(0xFF)).clamp(0, 0xFF)),
-      b: T((other.b * U(0xFF)).clamp(0, 0xFF)),
-      a: T((other.a * U(0xFF)).clamp(0, 0xFF)))
+      r: T((other.r * U(T.max)).clamp(0, U(T.max))),
+      g: T((other.g * U(T.max)).clamp(0, U(T.max))),
+      b: T((other.b * U(T.max)).clamp(0, U(T.max))),
+      a: T((other.a * U(T.max)).clamp(0, U(T.max))))
   }
-
-  func mix(_ other: Self, _ n: Float) -> Self {
-    Self(Color<Float>(self).mix(Color<Float>(other), n.saturated))
-  }
-
-  var linear: Self { Self(Color<Float>(self).linear) }
-  var sRGB: Self { Self(Color<Float>(self).sRGB) }
 }
 
 public extension Color where T == UInt8 {
@@ -79,27 +74,13 @@ public extension Color where T == UInt8 {
       b: UInt8((c & 0x0000FF) >>  0))
   }
 
-  var sRGB: Self {
-    return Self(
-      r: sRGB8FromLinear8Table[Int(r)],
-      g: sRGB8FromLinear8Table[Int(g)],
-      b: sRGB8FromLinear8Table[Int(b)],
-      a: a)
+  func mix(_ other: Self, _ n: Float) -> Self {
+    Self(Color<Float>(self).mix(Color<Float>(other), n.saturated))
   }
-}
 
-fileprivate var sRGB8FromLinear8Table: [UInt8] = {
-  (0..<0x100).map { i in
-    var x = Double(i) / 0xFF
-    if x < 0.0031308 {
-      x *= 12.92
-    } else {
-      x = 1.055 * pow(abs(x), 1 / 2.4) - 0.055
-    }
-    x = floor((x * 0xFF) + 0.5)
-    return UInt8(truncating: NSNumber(value: x))
-  }
-}()
+  var linear: Self { Self(Color<Float>(self).linear) }
+  var sRGB: Self { Self(Color<Float>(self).sRGB) }
+}
 
 public extension Color where T: BinaryFloatingPoint {
   @inline(__always) static var one: T { T(1) }
@@ -166,12 +147,7 @@ public extension Color where T: BinaryFloatingPoint {
     } else if x < 0.0031308 {
       x * 12.92
     } else {
-#if false
-      // Approximation
-      1.13005 * sqrt(abs(x - 0.00228)) - 0.13448 * x + 0.005719
-#else
       T(1.055 * pow(Double(abs(x)), 1 / 2.4) - 0.055)
-#endif
     }
   }
 }
