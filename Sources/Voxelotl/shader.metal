@@ -4,7 +4,7 @@
 
 struct FragmentInput {
   float4 position [[position]];
-  float4 normal;
+  float3 normal;
   float2 texCoord;
   half4 color;
 };
@@ -23,16 +23,24 @@ vertex FragmentInput vertexMain(
   FragmentInput out;
   out.position = ndc;
   out.color    = half4(i[instanceID].color) / 255.0;
-  out.normal   = vtx[vertexID].normal;
+  out.normal   = (i[instanceID].normalModel * vtx[vertexID].normal).xyz;
   out.texCoord = vtx[vertexID].texCoord;
   return out;
 }
 
 fragment half4 fragmentMain(
   FragmentInput in [[stage_in]],
-  metal::texture2d<half, metal::access::sample> texture [[texture(0)]]
+  metal::texture2d<half, metal::access::sample> texture [[texture(0)]],
+  constant ShaderUniforms& u [[buffer(ShaderInputIdxUniforms)]]
 ) {
   constexpr metal::sampler sampler(metal::address::repeat, metal::filter::nearest);
+  auto normal = metal::normalize(in.normal);
+
+  float lambert = metal::dot(normal, -u.directionalLight);
+  float diffuse = metal::max(0.0, lambert);
+
   half4 albedo = texture.sample(sampler, in.texCoord);
-  return albedo * in.color;
+  albedo *= in.color;
+
+  return albedo * diffuse;
 }

@@ -344,13 +344,16 @@ public class Renderer {
     assert(self._encoder != nil, "batch can't be called outside of a frame being rendered")
     assert(instances.count < 52)
 
-    var uniforms = ShaderUniforms(projView: camera.viewProjection)
+    var uniforms = ShaderUniforms(
+      projView: camera.viewProjection,
+      directionalLight: normalize(.init(0.75, -1, 0.5)))
     let instances = instances.map { (instance: Instance) -> ShaderInstance in
-      ShaderInstance(
-        model:
-          .translate(instance.position) *
-          matrix_float4x4(instance.rotation) *
-          .scale(instance.scale),
+      let model =
+        .translate(instance.position) *
+        matrix_float4x4(instance.rotation) *
+        .scale(instance.scale)
+      return ShaderInstance(
+        model: model, normalModel: model.inverse.transpose,
         color: SIMD4(Color<UInt8>(instance.color)))
     }
 
@@ -359,6 +362,9 @@ public class Renderer {
       length: instances.count * MemoryLayout<ShaderInstance>.stride,
       index: ShaderInputIdx.instance.rawValue)
     self._encoder.setVertexBytes(&uniforms,
+      length: MemoryLayout<ShaderUniforms>.stride,
+      index: ShaderInputIdx.uniforms.rawValue)
+    self._encoder.setFragmentBytes(&uniforms,
       length: MemoryLayout<ShaderUniforms>.stride,
       index: ShaderInputIdx.uniforms.rawValue)
 

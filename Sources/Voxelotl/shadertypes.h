@@ -24,11 +24,13 @@ typedef struct {
 
 typedef struct {
   matrix_float4x4 model;
+  matrix_float4x4 normalModel;
   vector_uchar4 color;
 } ShaderInstance;
 
 typedef struct {
   matrix_float4x4 projView;
+  vector_float3 directionalLight;
 } ShaderUniforms;
 
 #endif//SHADERTYPES_H
