@@ -321,9 +321,7 @@ public class Renderer {
       encoder.setRenderPipelineState(pso)
       encoder.setDepthStencilState(depthStencilState)
       encoder.setFragmentTexture(cubeTexture ?? defaultTexture, index: 0)
-      encoder.setVertexBuffer(vtxBuffer,
-        offset: 0,
-        index: ShaderInputIdx.vertices.rawValue)
+      encoder.setVertexBuffer(vtxBuffer, offset: 0, index: VertexShaderInputIdx.vertices.rawValue)
 
       self._encoder = encoder
       frameFunc(self)
@@ -342,31 +340,30 @@ public class Renderer {
 
   func batch(instances: [Instance], camera: Camera) {
     assert(self._encoder != nil, "batch can't be called outside of a frame being rendered")
-    assert(instances.count < 52)
+    assert(instances.count < 28)
 
-    var uniforms = ShaderUniforms(
-      projView: camera.viewProjection,
-      directionalLight: normalize(.init(0.75, -1, 0.5)))
-    let instances = instances.map { (instance: Instance) -> ShaderInstance in
+    var vertUniforms = VertexShaderUniforms(projView: camera.viewProjection)
+    var fragUniforms = FragmentShaderUniforms(directionalLight: normalize(.init(0.75, -1, 0.5)))
+    let instances = instances.map { (instance: Instance) -> VertexShaderInstance in
       let model =
         .translate(instance.position) *
         matrix_float4x4(instance.rotation) *
         .scale(instance.scale)
-      return ShaderInstance(
+      return VertexShaderInstance(
         model: model, normalModel: model.inverse.transpose,
         color: SIMD4(Color<UInt8>(instance.color)))
     }
 
     // Ideal as long as our uniforms total 4 KB or less
     self._encoder.setVertexBytes(instances,
-      length: instances.count * MemoryLayout<ShaderInstance>.stride,
-      index: ShaderInputIdx.instance.rawValue)
-    self._encoder.setVertexBytes(&uniforms,
-      length: MemoryLayout<ShaderUniforms>.stride,
-      index: ShaderInputIdx.uniforms.rawValue)
-    self._encoder.setFragmentBytes(&uniforms,
-      length: MemoryLayout<ShaderUniforms>.stride,
-      index: ShaderInputIdx.uniforms.rawValue)
+      length: instances.count * MemoryLayout<VertexShaderInstance>.stride,
+      index: VertexShaderInputIdx.instance.rawValue)
+    self._encoder.setVertexBytes(&vertUniforms,
+      length: MemoryLayout<VertexShaderUniforms>.stride,
+      index: VertexShaderInputIdx.uniforms.rawValue)
+    self._encoder.setFragmentBytes(&fragUniforms,
+      length: MemoryLayout<FragmentShaderUniforms>.stride,
+      index: FragmentShaderInputIdx.uniforms.rawValue)
 
     self._encoder.drawIndexedPrimitives(
       type: .triangle,

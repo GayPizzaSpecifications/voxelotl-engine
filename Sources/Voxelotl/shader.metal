@@ -12,9 +12,9 @@ struct FragmentInput {
 vertex FragmentInput vertexMain(
   uint vertexID [[vertex_id]],
   uint instanceID [[instance_id]],
-  device const ShaderVertex* vtx [[buffer(ShaderInputIdxVertices)]],
-  device const ShaderInstance* i [[buffer(ShaderInputIdxInstance)]],
-  constant ShaderUniforms& u [[buffer(ShaderInputIdxUniforms)]]
+  device const ShaderVertex* vtx [[buffer(VertexShaderInputIdxVertices)]],
+  device const VertexShaderInstance* i [[buffer(VertexShaderInputIdxInstance)]],
+  constant VertexShaderUniforms& u [[buffer(VertexShaderInputIdxUniforms)]]
 ) {
   auto position = vtx[vertexID].position;
   auto world = i[instanceID].model * position;
@@ -31,7 +31,7 @@ vertex FragmentInput vertexMain(
 fragment half4 fragmentMain(
   FragmentInput in [[stage_in]],
   metal::texture2d<half, metal::access::sample> texture [[texture(0)]],
-  constant ShaderUniforms& u [[buffer(ShaderInputIdxUniforms)]]
+  constant FragmentShaderUniforms& u [[buffer(FragmentShaderInputIdxUniforms)]]
 ) {
   constexpr metal::sampler sampler(metal::address::repeat, metal::filter::nearest);
   auto normal = metal::normalize(in.normal);

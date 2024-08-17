@@ -10,10 +10,10 @@
 
 #include <simd/simd.h>
 
-typedef NS_ENUM(NSInteger, ShaderInputIdx) {
-  ShaderInputIdxVertices = 0,
-  ShaderInputIdxInstance = 1,
-  ShaderInputIdxUniforms = 2
+typedef NS_ENUM(NSInteger, VertexShaderInputIdx) {
+  VertexShaderInputIdxVertices = 0,
+  VertexShaderInputIdxInstance = 1,
+  VertexShaderInputIdxUniforms = 2
 };
 
 typedef struct {
@@ -26,11 +26,18 @@ typedef struct {
   matrix_float4x4 model;
   matrix_float4x4 normalModel;
   vector_uchar4 color;
-} ShaderInstance;
+} VertexShaderInstance;
 
 typedef struct {
   matrix_float4x4 projView;
+} VertexShaderUniforms;
+
+typedef NS_ENUM(NSInteger, FragmentShaderInputIdx) {
+  FragmentShaderInputIdxUniforms = 0
+};
+
+typedef struct {
   vector_float3 directionalLight;
-} ShaderUniforms;
+} FragmentShaderUniforms;
 
 #endif//SHADERTYPES_H
