@@ -346,6 +346,8 @@ public class Renderer {
     var fragUniforms = FragmentShaderUniforms(
       cameraPosition: camera.position,
       directionalLight: normalize(.init(0.75, -1, 0.5)),
+      ambientColor:  SIMD4(Color(rgba8888: 0x1F1F1F00).linear),
+      diffuseColor:  SIMD4(Color(rgba8888: 0xEFEFEF00).linear),
       specularColor: SIMD4(Color(rgba8888: 0x7F7F7F00).linear),
       specularIntensity: 50)
     let instances = instances.map { (instance: Instance) -> VertexShaderInstance in

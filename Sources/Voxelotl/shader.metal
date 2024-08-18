@@ -37,18 +37,26 @@ fragment half4 fragmentMain(
   constexpr metal::sampler sampler(metal::address::repeat, metal::filter::nearest);
   auto normal = metal::normalize(in.normal);
 
+  // Components for blinn-phong & fresnel
   auto lightVec = -u.directionalLight;
-  float lambert = metal::dot(normal, lightVec);
-  float diffuse = metal::max(0.0, lambert);
-
   auto eyeVector = metal::normalize(u.cameraPosition - in.world);
   auto halfDir = metal::normalize(lightVec + eyeVector);
+
+  // Compute diffuse component
+  float lambert = metal::dot(normal, lightVec);
+  float diffuseAmount = metal::max(0.0, lambert);
+  half4 diffuse = half4(u.diffuseColor) * diffuseAmount;
+
+  // Compute specular component (blinn-phong)
   float specularAngle = metal::max(0.0, metal::dot(halfDir, normal));
   float specularTerm = metal::pow(specularAngle, u.specularIntensity);
-  half4 specularAmount = specularTerm * metal::smoothstep(0, 2, lambert * u.specularIntensity);
+  // smoothstep hack to ensure highlight tapers gracefully at grazing angles
+  float specularAmount = specularTerm * metal::smoothstep(0, 2, lambert * u.specularIntensity);
+  half4 specular = half4(u.specularColor) * specularAmount;
 
+  // Sample texture & vertex color to get albedo
   half4 albedo = texture.sample(sampler, in.texCoord);
   albedo *= in.color;
 
-  return albedo * diffuse + half4(u.specularColor) * specularAmount;
+  return albedo * (half4(u.ambientColor) + diffuse) + specular;
 }
