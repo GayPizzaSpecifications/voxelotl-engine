@@ -64,6 +64,7 @@ class Game: GameDelegate {
 
   func draw(_ renderer: Renderer, _ time: GameTime) {
     let totalTime = Float(time.total.asFloat)
+    let cubeSpeedMul: Float = 0.1
 
     var instances: [Instance] = boxes.map {
       Instance(
@@ -73,9 +74,9 @@ class Game: GameDelegate {
     }
     instances.append(
       Instance(
-        position: .init(0, sin(totalTime * 1.5) * 0.5, -2) * 2,
+        position: .init(0, sin(totalTime * 1.5 * cubeSpeedMul) * 0.5, -2) * 2,
         scale:    .init(repeating: 0.5),
-        rotation: .init(angle: totalTime * 3.0, axis: .init(0, 1, 0)),
+        rotation: .init(angle: totalTime * 3.0 * cubeSpeedMul, axis: .init(0, 1, 0)),
         color:    .init(r: 0.5, g: 0.5, b: 1).linear))
     renderer.batch(instances: instances, camera: self.camera)
   }

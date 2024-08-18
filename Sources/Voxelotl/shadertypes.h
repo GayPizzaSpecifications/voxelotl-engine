@@ -37,7 +37,9 @@ typedef NS_ENUM(NSInteger, FragmentShaderInputIdx) {
 };
 
 typedef struct {
-  vector_float3 directionalLight;
+  vector_float3 cameraPosition, directionalLight;
+  vector_float4 specularColor;
+  float specularIntensity;
 } FragmentShaderUniforms;
 
 #endif//SHADERTYPES_H

@@ -343,7 +343,11 @@ public class Renderer {
     assert(instances.count < 28)
 
     var vertUniforms = VertexShaderUniforms(projView: camera.viewProjection)
-    var fragUniforms = FragmentShaderUniforms(directionalLight: normalize(.init(0.75, -1, 0.5)))
+    var fragUniforms = FragmentShaderUniforms(
+      cameraPosition: camera.position,
+      directionalLight: normalize(.init(0.75, -1, 0.5)),
+      specularColor: SIMD4(Color(rgba8888: 0x7F7F7F00).linear),
+      specularIntensity: 50)
     let instances = instances.map { (instance: Instance) -> VertexShaderInstance in
       let model =
         .translate(instance.position) *

@@ -4,6 +4,7 @@
 
 struct FragmentInput {
   float4 position [[position]];
+  float3 world;
   float3 normal;
   float2 texCoord;
   half4 color;
@@ -18,10 +19,10 @@ vertex FragmentInput vertexMain(
 ) {
   auto position = vtx[vertexID].position;
   auto world = i[instanceID].model * position;
-  auto ndc = u.projView * world;
 
   FragmentInput out;
-  out.position = ndc;
+  out.position = u.projView * world;
+  out.world    = world.xyz;
   out.color    = half4(i[instanceID].color) / 255.0;
   out.normal   = (i[instanceID].normalModel * vtx[vertexID].normal).xyz;
   out.texCoord = vtx[vertexID].texCoord;
@@ -36,11 +37,18 @@ fragment half4 fragmentMain(
   constexpr metal::sampler sampler(metal::address::repeat, metal::filter::nearest);
   auto normal = metal::normalize(in.normal);
 
-  float lambert = metal::dot(normal, -u.directionalLight);
+  auto lightVec = -u.directionalLight;
+  float lambert = metal::dot(normal, lightVec);
   float diffuse = metal::max(0.0, lambert);
+
+  auto eyeVector = metal::normalize(u.cameraPosition - in.world);
+  auto halfDir = metal::normalize(lightVec + eyeVector);
+  float specularAngle = metal::max(0.0, metal::dot(halfDir, normal));
+  float specularTerm = metal::pow(specularAngle, u.specularIntensity);
+  half4 specularAmount = specularTerm * metal::smoothstep(0, 2, lambert * u.specularIntensity);
 
   half4 albedo = texture.sample(sampler, in.texCoord);
   albedo *= in.color;
 
-  return albedo * diffuse;
+  return albedo * diffuse + half4(u.specularColor) * specularAmount;
 }
