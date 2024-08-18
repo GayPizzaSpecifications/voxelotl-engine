@@ -42,7 +42,7 @@ fileprivate let cubeIndices: [UInt16] = [
 
 fileprivate let numFramesInFlight: Int = 3
 fileprivate let colorFormat: MTLPixelFormat = .bgra8Unorm_srgb
-fileprivate let depthFormat: MTLPixelFormat = .depth16Unorm
+fileprivate let depthFormat: MTLPixelFormat = .depth32Float
 fileprivate let clearColor: Color<Double> = .black.mix(.white, 0.1).linear
 
 public class Renderer {
