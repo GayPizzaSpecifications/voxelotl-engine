@@ -89,6 +89,10 @@ public extension Color where T: BinaryFloatingPoint {
     self.init(r: newR, g: newG, b: newB, a: Self.one)
   }
 
+  init<U: BinaryFloatingPoint>(_ other: Color<U>) {
+    self._values = SIMD4<T>(other._values)
+  }
+
   init<U: BinaryInteger>(_ other: Color<U>) {
     let mul = 1 / T(0xFF)
     self.init(

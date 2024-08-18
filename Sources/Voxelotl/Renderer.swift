@@ -380,7 +380,7 @@ public class Renderer {
           .scale(instance.scale)
         data[i] = VertexShaderInstance(
           model: model, normalModel: model.inverse.transpose,
-          color: SIMD4(Color<UInt8>(instance.color)))
+          color: SIMD4(Color<Float>(instance.color)))
       }
     }
     instanceBuffer.didModifyRange(0..<instancesBytes)

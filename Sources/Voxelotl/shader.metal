@@ -23,7 +23,7 @@ vertex FragmentInput vertexMain(
   FragmentInput out;
   out.position = u.projView * world;
   out.world    = world.xyz;
-  out.color    = half4(i[instanceID].color) / 255.0;
+  out.color    = half4(i[instanceID].color);
   out.normal   = (i[instanceID].normalModel * vtx[vertexID].normal).xyz;
   out.texCoord = vtx[vertexID].texCoord;
   return out;
