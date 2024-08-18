@@ -55,7 +55,9 @@ public class Renderer {
   private let passDescription = MTLRenderPassDescriptor()
   private var pso: MTLRenderPipelineState
   private var depthStencilState: MTLDepthStencilState
+
   private var depthTextures: [MTLTexture]
+  private var _instances: [MTLBuffer?]
 
   private var _encoder: MTLRenderCommandEncoder! = nil
 
@@ -112,6 +114,8 @@ public class Renderer {
       }
       return depthStencilTexture
     }
+
+    self._instances = [MTLBuffer?](repeating: nil, count: numFramesInFlight)
 
     let stencilDepthDescription = MTLDepthStencilDescriptor()
     stencilDepthDescription.depthCompareFunction = .less  // OpenGL default
@@ -256,7 +260,7 @@ public class Renderer {
         width:       size.w,
         height:      size.h,
         mipmapped:   false)
-      texDescriptor.depth = 1
+      texDescriptor.depth       = 1
       texDescriptor.sampleCount = 1
       texDescriptor.usage       = [ .renderTarget, .shaderRead ]
   #if !NDEBUG
@@ -340,7 +344,6 @@ public class Renderer {
 
   func batch(instances: [Instance], camera: Camera) {
     assert(self._encoder != nil, "batch can't be called outside of a frame being rendered")
-    assert(instances.count < 28)
 
     var vertUniforms = VertexShaderUniforms(projView: camera.viewProjection)
     var fragUniforms = FragmentShaderUniforms(
@@ -350,20 +353,42 @@ public class Renderer {
       diffuseColor:  SIMD4(Color(rgba8888: 0xEFEFEF00).linear),
       specularColor: SIMD4(Color(rgba8888: 0x7F7F7F00).linear),
       specularIntensity: 50)
-    let instances = instances.map { (instance: Instance) -> VertexShaderInstance in
-      let model =
-        .translate(instance.position) *
-        matrix_float4x4(instance.rotation) *
-        .scale(instance.scale)
-      return VertexShaderInstance(
-        model: model, normalModel: model.inverse.transpose,
-        color: SIMD4(Color<UInt8>(instance.color)))
-    }
 
-    // Ideal as long as our uniforms total 4 KB or less
-    self._encoder.setVertexBytes(instances,
-      length: instances.count * MemoryLayout<VertexShaderInstance>.stride,
+    let numInstances = instances.count
+    let instancesBytes = numInstances * MemoryLayout<VertexShaderInstance>.stride
+
+    // (Re)create instance buffer if needed
+    if self._instances[self.currentFrame] == nil || numInstances > self._instances[self.currentFrame]!.length {
+      guard let instanceBuffer = self.device.makeBuffer(
+        length: instancesBytes,
+        options: .storageModeManaged)
+      else {
+        fatalError("Failed to (re)create instance buffer")
+      }
+      self._instances[self.currentFrame] = instanceBuffer
+    }
+    let instanceBuffer = self._instances[self.currentFrame]!
+
+    // Convert & upload instance data to the GPU
+    //FIXME: currently will misbehave if batch is called more than once
+    instanceBuffer.contents().withMemoryRebound(to: VertexShaderInstance.self, capacity: numInstances) { data in
+      for i in 0..<numInstances {
+        let instance = instances[i]
+        let model =
+          .translate(instance.position) *
+          matrix_float4x4(instance.rotation) *
+          .scale(instance.scale)
+        data[i] = VertexShaderInstance(
+          model: model, normalModel: model.inverse.transpose,
+          color: SIMD4(Color<UInt8>(instance.color)))
+      }
+    }
+    instanceBuffer.didModifyRange(0..<instancesBytes)
+
+    self._encoder.setVertexBuffer(instanceBuffer,
+      offset: 0,
       index: VertexShaderInputIdx.instance.rawValue)
+    // Ideal as long as our uniforms total 4 KB or less
     self._encoder.setVertexBytes(&vertUniforms,
       length: MemoryLayout<VertexShaderUniforms>.stride,
       index: VertexShaderInputIdx.uniforms.rawValue)
@@ -377,7 +402,7 @@ public class Renderer {
       indexType: .uint16,
       indexBuffer: idxBuffer,
       indexBufferOffset: 0,
-      instanceCount: instances.count)
+      instanceCount: numInstances)
   }
 }
 
