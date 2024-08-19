@@ -30,11 +30,13 @@ class Game: GameDelegate {
   var camera = Camera(fov: 60, size: .one, range: 0.06...900)
   var player = Player()
   var projection: matrix_float4x4 = .identity
-
-  var boxes: [Box] = []
   
+  var boxes: [Box] = []
+  var chunk = Chunk(position: .zero)
+
+
   init() {
-    var chunk = Chunk(position: .zero)
+    player.position = SIMD3(0.5, Float(Chunk.chunkSize) + 0.5, 0.5)
     let options: [BlockType] = [
       .air,
       .solid(.blue),
@@ -54,6 +56,26 @@ class Game: GameDelegate {
     ]
     chunk
       .fill(allBy: { options[Int(arc4random_uniform(UInt32(options.count)))] })
+  }
+  
+  func fixedUpdate(_ time: GameTime) {
+    
+  }
+
+  func update(_ time: GameTime) {
+    fpsCalculator.frame(deltaTime: time.delta) { fps in
+      print("FPS: \(fps)")
+    }
+
+    let deltaTime = min(Float(time.delta.asFloat), 1.0 / 15)
+
+    if let pad = GameController.current?.state {
+      if pad.pressed(.south) {
+        chunk
+          .setBlockInternally(at: SIMD3(player.position - SIMD3(0, 2, 0)), type: .air)
+      }
+    }
+    boxes = []
     chunk.forEach { position, block in
       if block.type == .air {
         return
@@ -70,20 +92,7 @@ class Game: GameDelegate {
           )
       }
     }
-    player.position = SIMD3(0.5, Float(Chunk.chunkSize) + 0.5, 0.5)
-  }
-  
-  func fixedUpdate(_ time: GameTime) {
     
-  }
-
-  func update(_ time: GameTime) {
-    fpsCalculator.frame(deltaTime: time.delta) { fps in
-      print("FPS: \(fps)")
-    }
-
-    let deltaTime = min(Float(time.delta.asFloat), 1.0 / 15)
-
     player.update(deltaTime: deltaTime, boxes: boxes)
     camera.position = player.position
     camera.rotation =

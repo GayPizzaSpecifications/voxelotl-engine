@@ -22,6 +22,14 @@ public struct Chunk {
   }
   
   mutating func setBlockInternally(at position: SIMD3<Int>, type: BlockType) {
+    if position.x >= Chunk.chunkSize || position.y >= Chunk.chunkSize || position.z >= Chunk.chunkSize {
+      return
+    }
+    
+    if position.x < 0 || position.y < 0 || position.z < 0 {
+      return
+    }
+    
     blocks[position.x + position.y * Chunk.chunkSize + position.z * Chunk.chunkSize * Chunk.chunkSize].type = type
   }
   
