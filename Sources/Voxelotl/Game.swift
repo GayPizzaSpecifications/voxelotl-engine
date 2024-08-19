@@ -1,4 +1,5 @@
 import simd
+import Foundation
 
 struct Box {
   var geometry: AABB
@@ -24,26 +25,54 @@ struct Instance {
   }
 }
 
-let boxes: [Box] = [
-  Box(geometry: .fromUnitCube(
-    position: .init( 0,  -1,  0) * 2,
-    scale:    .init(10, 0.1, 10) * 2)),
-  Box(geometry: .fromUnitCube(
-    position: .init(-2.5, 0, -3) * 2,
-    scale:    .init(repeating: 2)),
-    color:    .init(rgb888: 0xFF80BF).linear),
-  Box(geometry: .fromUnitCube(
-    position: .init(-2.5, -0.5, -5) * 2,
-    scale:    .init(repeating: 2)),
-    color:    .init(rgb888: 0xBFFFFF).linear)
-]
-
 class Game: GameDelegate {
   private var fpsCalculator = FPSCalculator()
-  var camera = Camera(fov: 60, size: .one, range: 0.06...50)
+  var camera = Camera(fov: 60, size: .one, range: 0.06...900)
   var player = Player()
   var projection: matrix_float4x4 = .identity
 
+  var boxes: [Box] = []
+  
+  init() {
+    var chunk = Chunk(position: .zero)
+    let options: [BlockType] = [
+      .air,
+      .solid(.blue),
+      .air,
+      .solid(.red),
+      .air,
+      .solid(.green),
+      .air,
+      .solid(.white),
+      .air,
+      .solid(.cyan),
+      .air,
+      .solid(.yellow),
+      .air,
+      .solid(.magenta),
+      .air,
+    ]
+    chunk
+      .fill(allBy: { options[Int(arc4random_uniform(UInt32(options.count)))] })
+    chunk.forEach { position, block in
+      if block.type == .air {
+        return
+      }
+      
+      if case let .solid(color) = block.type {
+        boxes
+          .append(
+            Box(
+              geometry:
+                  .fromUnitCube(position: SIMD3<Float>(position) + 0.5, scale: .init(repeating: 0.5)),
+              color: color
+            )
+          )
+      }
+    }
+    player.position = SIMD3(0.5, Float(Chunk.chunkSize) + 0.5, 0.5)
+  }
+  
   func fixedUpdate(_ time: GameTime) {
     
   }
@@ -74,7 +103,7 @@ class Game: GameDelegate {
     }
     instances.append(
       Instance(
-        position: .init(0, sin(totalTime * 1.5 * cubeSpeedMul) * 0.5, -2) * 2,
+        position: .init(0, sin(totalTime * 1.5 * cubeSpeedMul) * 0.5, 0) * 2,
         scale:    .init(repeating: 0.5),
         rotation: .init(angle: totalTime * 3.0 * cubeSpeedMul, axis: .init(0, 1, 0)),
         color:    .init(r: 0.5, g: 0.5, b: 1).linear))

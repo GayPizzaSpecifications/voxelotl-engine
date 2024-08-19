@@ -3,6 +3,8 @@ add_executable(Voxelotl MACOSX_BUNDLE
 
   test.png
 
+  Chunk.swift
+
   shadertypes.h
   shader.metal
 

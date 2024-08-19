@@ -20,7 +20,9 @@ struct Player {
 
   private var _onGround: Bool = false
 
-  public var position: SIMD3<Float> { self._position + .init(0, Self.eyeLevel, 0) }
+  public var position: SIMD3<Float> {
+    get { self._position + .init(0, Self.eyeLevel, 0) } set { self._position = newValue }
+  }
   public var rotation: SIMD2<Float> { self._rotation }
 
   mutating func update(deltaTime: Float, boxes: [Box]) {
@@ -36,22 +38,27 @@ struct Player {
       }
       self._rotation.y = self._rotation.y.clamp(-.pi * 0.5, .pi * 0.5)
 
-      if self._onGround {
-        // Movement on ground
-        let movement = pad.leftStick.cardinalDeadzone(min: 0.1, max: 1)
-        let rotc = cos(self._rotation.x), rots = sin(self._rotation.x)
-        self._velocity.x = (movement.x * rotc - movement.y * rots) * Self.accelerationCoeff
-        self._velocity.z = (movement.y * rotc + movement.x * rots) * Self.accelerationCoeff
+      // Movement (slower in air than on ground)
+      let movement = pad.leftStick.cardinalDeadzone(min: 0.1, max: 1)
+      let rotc = cos(self._rotation.x), rots = sin(self._rotation.x)
+      let movementScale: Float = self._onGround ? 1.0 : 0.4
+      self._velocity.x = (
+        movement.x * rotc - movement.y * rots
+      ) * Self.accelerationCoeff * movementScale
+      self._velocity.z = (
+        movement.y * rotc + movement.x * rots
+      ) * Self.accelerationCoeff * movementScale
 
+      if self._onGround {
         // Jumping
         if pad.pressed(.east) {
           self._velocity.y = Self.jumpVelocity
           self._onGround = false
         }
       }
-
-      // Flying
-      self._velocity.y += pad.rightTrigger * 36 * deltaTime
+      
+      // Flying and unflying
+      self._velocity.y += (pad.rightTrigger - pad.leftTrigger) * 36 * deltaTime
 
       // Reset
       if pad.pressed(.back) {
@@ -111,6 +118,18 @@ struct Player {
     if self._onGround {
       self._velocity.x = 0
       self._velocity.z = 0
+    }
+    
+    if self._velocity.x > 10 {
+      self._velocity.x = 10
+    }
+    
+    if self._velocity.y > 10 {
+      self._velocity.y = 10
+    }
+
+    if abs(self._velocity.y) > 40 {
+      self._velocity.y = Float(signOf: self._velocity.y, magnitudeOf: 40.0)
     }
   }
 }
