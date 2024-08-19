@@ -20,10 +20,11 @@ struct Player {
 
   private var _onGround: Bool = false
 
-  public var position: SIMD3<Float> {
-    get { self._position + .init(0, Self.eyeLevel, 0) } set { self._position = newValue }
-  }
-  public var rotation: SIMD2<Float> { self._rotation }
+  public var position: SIMD3<Float> { get { self._position } set { self._position = newValue } }
+  public var velocity: SIMD3<Float> { get { self._velocity } set { self._velocity = newValue } }
+  public var rotation: SIMD2<Float> { get { self._rotation } set { self._rotation = newValue } }
+
+  public var eyePosition: SIMD3<Float> { self._position + .init(0, Self.eyeLevel, 0) }
 
   mutating func update(deltaTime: Float, boxes: [Box]) {
     if let pad = GameController.current?.state {
@@ -56,17 +57,9 @@ struct Player {
           self._onGround = false
         }
       }
-      
+
       // Flying and unflying
       self._velocity.y += (pad.rightTrigger - pad.leftTrigger) * 36 * deltaTime
-
-      // Reset
-      if pad.pressed(.back) {
-        self._position = .zero
-        self._velocity = .zero
-        self._rotation = .zero
-        self._onGround = false
-      }
     }
 
     // Apply gravity
@@ -119,11 +112,11 @@ struct Player {
       self._velocity.x = 0
       self._velocity.z = 0
     }
-    
+
     if self._velocity.x > 10 {
       self._velocity.x = 10
     }
-    
+
     if self._velocity.y > 10 {
       self._velocity.y = 10
     }

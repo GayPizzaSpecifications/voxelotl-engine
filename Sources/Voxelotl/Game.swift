@@ -30,13 +30,14 @@ class Game: GameDelegate {
   var camera = Camera(fov: 60, size: .one, range: 0.06...900)
   var player = Player()
   var projection: matrix_float4x4 = .identity
-  
+
   var boxes: [Box] = []
   var chunk = Chunk(position: .zero)
 
-
   init() {
     player.position = SIMD3(0.5, Float(Chunk.chunkSize) + 0.5, 0.5)
+    player.rotation = .init(.pi, 0)
+
     let options: [BlockType] = [
       .air,
       .solid(.blue),
@@ -54,10 +55,9 @@ class Game: GameDelegate {
       .solid(.magenta),
       .air,
     ]
-    chunk
-      .fill(allBy: { options[Int(arc4random_uniform(UInt32(options.count)))] })
+    chunk.fill(allBy: { options[Int(arc4random_uniform(UInt32(options.count)))] })
   }
-  
+
   func fixedUpdate(_ time: GameTime) {
     
   }
@@ -71,8 +71,13 @@ class Game: GameDelegate {
 
     if let pad = GameController.current?.state {
       if pad.pressed(.south) {
-        chunk
-          .setBlockInternally(at: SIMD3(player.position - SIMD3(0, 2, 0)), type: .air)
+        chunk.setBlockInternally(at: SIMD3(player.position - SIMD3(0, 2, 0)), type: .air)
+      }
+      // Player reset
+      if pad.pressed(.back) {
+        player.position = SIMD3(0.5, Float(Chunk.chunkSize) + 0.5, 0.5)
+        player.velocity = .zero
+        player.rotation = .init(.pi, 0)
       }
     }
     boxes = []
@@ -80,21 +85,16 @@ class Game: GameDelegate {
       if block.type == .air {
         return
       }
-      
+
       if case let .solid(color) = block.type {
-        boxes
-          .append(
-            Box(
-              geometry:
-                  .fromUnitCube(position: SIMD3<Float>(position) + 0.5, scale: .init(repeating: 0.5)),
-              color: color
-            )
-          )
+        boxes.append(Box(
+          geometry: .fromUnitCube(position: SIMD3<Float>(position) + 0.5, scale: .init(repeating: 0.5)),
+          color: color))
       }
     }
-    
+
     player.update(deltaTime: deltaTime, boxes: boxes)
-    camera.position = player.position
+    camera.position = player.eyePosition
     camera.rotation =
       simd_quatf(angle: player.rotation.y, axis: .init(1, 0, 0)) *
       simd_quatf(angle: player.rotation.x, axis: .init(0, 1, 0))
