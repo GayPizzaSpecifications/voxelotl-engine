@@ -70,8 +70,9 @@ class Game: GameDelegate {
     let deltaTime = min(Float(time.delta.asFloat), 1.0 / 15)
 
     if let pad = GameController.current?.state {
+      // Delete block underneath player
       if pad.pressed(.south) {
-        chunk.setBlockInternally(at: SIMD3(player.position - SIMD3(0, 2, 0)), type: .air)
+        chunk.setBlockInternally(at: SIMD3(player.position + .down * 0.2), type: .air)
       }
       // Player reset
       if pad.pressed(.back) {
@@ -95,9 +96,7 @@ class Game: GameDelegate {
 
     player.update(deltaTime: deltaTime, boxes: boxes)
     camera.position = player.eyePosition
-    camera.rotation =
-      simd_quatf(angle: player.rotation.y, axis: .init(1, 0, 0)) *
-      simd_quatf(angle: player.rotation.x, axis: .init(0, 1, 0))
+    camera.rotation = player.eyeRotation
   }
 
   func draw(_ renderer: Renderer, _ time: GameTime) {
