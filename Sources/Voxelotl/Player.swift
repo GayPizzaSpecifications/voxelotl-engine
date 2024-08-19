@@ -68,11 +68,37 @@ struct Player {
     self._velocity.y -= Self.gravityCoeff * deltaTime
 
     // Move & handle collision
+    let checkCorner = { (bounds: AABB, corner: SIMD3<Float>) -> Optional<AABB> in
+      let blockPos = SIMD3(floor(corner.x), floor(corner.y), floor(corner.z))
+      if case BlockType.solid = chunk.getBlock(at: SIMD3<Int>(blockPos)).type {
+        let blockGeometry = AABB(from: blockPos, to: blockPos + 1)
+        if bounds.touching(blockGeometry) {
+          return blockGeometry
+        }
+      }
+      return nil
+    }
     let checkCollision = { (position: SIMD3<Float>) -> Optional<AABB> in
       let bounds = Self.bounds + position
-      //if bounds.touching(blockGeometry) {
-      //  return box.geometry
-      //}
+      let corners: [SIMD3<Float>] = [
+        .init(bounds.left,  bounds.bottom,   bounds.far),
+        .init(bounds.right, bounds.bottom,   bounds.far),
+        .init(bounds.left,  bounds.bottom,   bounds.near),
+        .init(bounds.right, bounds.bottom,   bounds.near),
+        .init(bounds.left,  bounds.center.y, bounds.far),
+        .init(bounds.right, bounds.center.y, bounds.far),
+        .init(bounds.left,  bounds.center.y, bounds.near),
+        .init(bounds.right, bounds.center.y, bounds.near),
+        .init(bounds.left,  bounds.top,      bounds.far),
+        .init(bounds.right, bounds.top,      bounds.far),
+        .init(bounds.left,  bounds.top,      bounds.near),
+        .init(bounds.right, bounds.top,      bounds.near)
+      ]
+      for corner in corners {
+        if let geometry = checkCorner(bounds, corner) {
+          return geometry
+        }
+      }
       return nil
     }
     self._position.x += self._velocity.x * deltaTime
