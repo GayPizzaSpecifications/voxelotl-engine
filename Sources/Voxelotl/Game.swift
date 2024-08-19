@@ -1,11 +1,6 @@
 import simd
 import Foundation
 
-struct Box {
-  var geometry: AABB
-  var color: Color<Float16> = .white
-}
-
 struct Instance {
   let position: SIMD3<Float>
   let scale: SIMD3<Float>
@@ -30,32 +25,24 @@ class Game: GameDelegate {
   var camera = Camera(fov: 60, size: .one, range: 0.06...900)
   var player = Player()
   var projection: matrix_float4x4 = .identity
-
-  var boxes: [Box] = []
   var chunk = Chunk(position: .zero)
 
   init() {
     player.position = SIMD3(0.5, Float(Chunk.chunkSize) + 0.5, 0.5)
     player.rotation = .init(.pi, 0)
 
-    let options: [BlockType] = [
-      .air,
-      .solid(.blue),
-      .air,
-      .solid(.red),
-      .air,
-      .solid(.green),
-      .air,
-      .solid(.white),
-      .air,
-      .solid(.cyan),
-      .air,
-      .solid(.yellow),
-      .air,
-      .solid(.magenta),
-      .air,
+    let colors: [Color<UInt8>] = [
+      .white,
+      .red, .blue, .green,
+      .magenta, .yellow, .cyan
     ]
-    chunk.fill(allBy: { options[Int(arc4random_uniform(UInt32(options.count)))] })
+    chunk.fill(allBy: {
+      if (arc4random() & 0x1) == 0x1 {
+        .solid(colors[Int(arc4random_uniform(UInt32(colors.count)))])
+      } else {
+        .air
+      }
+    })
   }
 
   func fixedUpdate(_ time: GameTime) {
@@ -72,29 +59,17 @@ class Game: GameDelegate {
     if let pad = GameController.current?.state {
       // Delete block underneath player
       if pad.pressed(.south) {
-        chunk.setBlockInternally(at: SIMD3(player.position + .down * 0.2), type: .air)
+        chunk.setBlock(at: SIMD3(player.position + .down * 0.2), type: .air)
       }
       // Player reset
       if pad.pressed(.back) {
-        player.position = SIMD3(0.5, Float(Chunk.chunkSize) + 0.5, 0.5)
+        player.position = .init(repeating: 0.5) + .init(0, Float(Chunk.chunkSize), 0)
         player.velocity = .zero
         player.rotation = .init(.pi, 0)
       }
     }
-    boxes = []
-    chunk.forEach { position, block in
-      if block.type == .air {
-        return
-      }
 
-      if case let .solid(color) = block.type {
-        boxes.append(Box(
-          geometry: .fromUnitCube(position: SIMD3<Float>(position) + 0.5, scale: .init(repeating: 0.5)),
-          color: color))
-      }
-    }
-
-    player.update(deltaTime: deltaTime, boxes: boxes)
+    player.update(deltaTime: deltaTime, chunk: chunk)
     camera.position = player.eyePosition
     camera.rotation = player.eyeRotation
   }
@@ -103,18 +78,14 @@ class Game: GameDelegate {
     let totalTime = Float(time.total.asFloat)
     let cubeSpeedMul: Float = 0.1
 
-    var instances: [Instance] = boxes.map {
-      Instance(
-        position: $0.geometry.center,
-        scale:    $0.geometry.size * 0.5,
-        color:    $0.color)
+    let instances = chunk.compactMap { block, position in
+      if case let .solid(color) = block.type {
+        Instance(
+          position: SIMD3<Float>(position) + 0.5,
+          scale:    .init(repeating: 0.5),
+          color:    Color<Float16>(color).linear)
+      } else { nil }
     }
-    instances.append(
-      Instance(
-        position: .init(0, sin(totalTime * 1.5 * cubeSpeedMul) * 0.5, 0) * 2,
-        scale:    .init(repeating: 0.5),
-        rotation: .init(angle: totalTime * 3.0 * cubeSpeedMul, axis: .init(0, 1, 0)),
-        color:    .init(r: 0.5, g: 0.5, b: 1).linear))
     renderer.batch(instances: instances, camera: self.camera)
   }
 

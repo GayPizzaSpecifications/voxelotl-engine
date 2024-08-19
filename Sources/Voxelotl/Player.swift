@@ -33,7 +33,7 @@ struct Player {
     .init(angle: self._rotation.x, axis: .up)
   }
 
-  mutating func update(deltaTime: Float, boxes: [Box]) {
+  mutating func update(deltaTime: Float, chunk: Chunk) {
     if let pad = GameController.current?.state {
       // Turning input
       let turning = pad.rightStick.radialDeadzone(min: 0.1, max: 1)
@@ -69,12 +69,10 @@ struct Player {
 
     // Move & handle collision
     let checkCollision = { (position: SIMD3<Float>) -> Optional<AABB> in
-      for box in boxes {
-        let bounds = Self.bounds + position
-        if bounds.touching(box.geometry) {
-          return box.geometry
-        }
-      }
+      let bounds = Self.bounds + position
+      //if bounds.touching(blockGeometry) {
+      //  return box.geometry
+      //}
       return nil
     }
     self._position.x += self._velocity.x * deltaTime
