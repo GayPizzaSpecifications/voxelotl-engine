@@ -22,6 +22,7 @@ struct Player {
   private var _rotation = SIMD2<Float>.zero
 
   private var _onGround: Bool = false
+  private var _shouldJump: Optional<Float> = .none
 
   public var position: SIMD3<Float> { get { self._position } set { self._position = newValue } }
   public var velocity: SIMD3<Float> { get { self._velocity } set { self._velocity = newValue } }
@@ -46,11 +47,22 @@ struct Player {
       self._rotation.y = self._rotation.y.clamp(-.pi * 0.5, .pi * 0.5)
 
       // Jumping
-      if self._onGround {
-        if pad.pressed(.east) {
-          self._velocity.y = Self.jumpVelocity
-          self._onGround = false
+      if pad.pressed(.east) {
+        self._shouldJump = 0.3
+      } else if self._shouldJump != .none {
+        if pad.down(.east) {
+          self._shouldJump! -= deltaTime
+          if self._shouldJump! <= 0.0 {
+            self._shouldJump = .none
+          }
+        } else {
+          self._shouldJump = .none
         }
+      }
+      if self._onGround && self._shouldJump != .none {
+        self._velocity.y = Self.jumpVelocity
+        self._onGround = false
+        self._shouldJump = .none
       }
 
       // Movement (slower in air than on ground)
