@@ -113,6 +113,19 @@ struct Player {
       }
       return nil
     }
+    self._position.y += self._velocity.y * deltaTime
+    if let aabb = checkCollision(self._velocity.y > 0 ? self._position + .down * Self.epsilon : self.position) {
+      if self._velocity.y < 0 {
+        self._position.y = aabb.top + Self.epsilon
+        self._onGround = true
+      } else {
+        self._position.y = aabb.bottom - Self.height - Self.epsilon
+        self._onGround = false
+      }
+      self._velocity.y = 0
+    } else {
+      self._onGround = false
+    }
     self._position.x += self._velocity.x * deltaTime
     if let aabb = checkCollision(self._position) {
       if self._velocity.x < 0 {
@@ -130,19 +143,6 @@ struct Player {
         self._position.z = aabb.far - Self.radius - Self.epsilon
       }
       self._velocity.z = 0
-    }
-    self._position.y += self._velocity.y * deltaTime
-    if let aabb = checkCollision(self._velocity.y > 0 ? self._position + .down * Self.epsilon : self.position) {
-      if self._velocity.y < 0 {
-        self._position.y = aabb.top + Self.epsilon
-        self._onGround = true
-      } else {
-        self._position.y = aabb.bottom - Self.height - Self.epsilon
-        self._onGround = false
-      }
-      self._velocity.y = 0
-    } else {
-      self._onGround = false
     }
 
     // Ground friction
