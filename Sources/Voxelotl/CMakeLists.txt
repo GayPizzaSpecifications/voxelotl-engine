@@ -1,33 +1,40 @@
 add_executable(Voxelotl MACOSX_BUNDLE
+  # Resources
   Assets.xcassets
-
   test.png
 
+  # Shaders
   shadertypes.h
   shader.metal
 
-  FloatExtensions.swift
-  Matrix4x4.swift
-  Rectangle.swift
-  AABB.swift
-  Color.swift
+  # Maths library
+  Math/FloatExtensions.swift
+  Math/VectorExtensions.swift
+  Math/Matrix4x4.swift
+  Math/Rectangle.swift
+  Math/AABB.swift
 
+  # Random number generator subsystem
   Random/RandomProvider.swift
   Random/RandomRange.swift
   Random/Arc4Random.swift
   Random/DarwinRandom.swift
 
+  # Resource classes
   NSImageLoader.swift
+
+  # Core utility classes
+  Color.swift
+  Camera.swift
   Renderer.swift
   GameController.swift
   FPSCalculator.swift
-
-  Chunk.swift
-  Camera.swift
-  Player.swift
   GameDelegate.swift
   Application.swift
 
+  # Game logic classes
+  Chunk.swift
+  Player.swift
   Game.swift
 
   main.swift)
@@ -64,6 +71,8 @@ set_source_files_properties(Assets.xcassets PROPERTIES MACOSX_PACKAGE_LOCATION R
 set_source_files_properties(module.modulemap PROPERTIES MACOSX_PACKAGE_LOCATION Modules)
 set_source_files_properties(test.png PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
 
+#TODO: should use TREE mode as documented in https://cmake.org/cmake/help/latest/command/source_group.html
 source_group("Resources" FILES Assets.xcassets test.png)
 source_group("Source Files" REGULAR_EXPRESSION "\\.(swift|metal)$")
 source_group("Source Files\\Random" REGULAR_EXPRESSION "Random/")
+source_group("Source Files\\Math" REGULAR_EXPRESSION "Math/")
