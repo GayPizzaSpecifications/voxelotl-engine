@@ -112,7 +112,7 @@ public struct Chunk {
 
 public enum BlockType: Equatable {
   case air
-  case solid(_ color: Color<UInt8>)
+  case solid(_ color: Color<Float16>)
 }
 
 public struct Block {

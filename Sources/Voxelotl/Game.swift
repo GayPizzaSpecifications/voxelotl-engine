@@ -36,7 +36,7 @@ class Game: GameDelegate {
     var random = DarwinRandom(seed: Arc4Random.instance.next(in: DarwinRandom.max))
     self.chunk.fill(allBy: {
       if (random.next() & 0x1) == 0x1 {
-        .solid(.init(rgb888: UInt32(random.next(in: 0..<0xFFFFFF+1))))
+        .solid(.init(rgb888: UInt32(random.next(in: 0..<0xFFFFFF+1))).linear)
       } else {
         .air
       }
@@ -84,7 +84,7 @@ class Game: GameDelegate {
         Instance(
           position: SIMD3<Float>(position) + 0.5,
           scale:    .init(repeating: 0.5),
-          color:    Color<Float16>(color).linear)
+          color:    color)
       } else { nil }
     }
     if !instances.isEmpty {
