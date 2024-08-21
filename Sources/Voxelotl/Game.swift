@@ -1,5 +1,4 @@
 import simd
-import Foundation
 
 struct Instance {
   let position: SIMD3<Float>
@@ -26,6 +25,7 @@ class Game: GameDelegate {
   var player = Player()
   var projection: matrix_float4x4 = .identity
   var chunk = Chunk(position: .zero)
+  var random = Arc4Random.instance
 
   init() {
     player.position = SIMD3(0.5, Float(Chunk.chunkSize) + 0.5, 0.5)
@@ -37,8 +37,8 @@ class Game: GameDelegate {
       .magenta, .yellow, .cyan
     ]
     chunk.fill(allBy: {
-      if (arc4random() & 0x1) == 0x1 {
-        .solid(colors[Int(arc4random_uniform(UInt32(colors.count)))])
+      if (random.next() & 0x1) == 0x1 {
+        .solid(colors[random.next(in: 0..<colors.count)])
       } else {
         .air
       }
@@ -86,7 +86,9 @@ class Game: GameDelegate {
           color:    Color<Float16>(color).linear)
       } else { nil }
     }
-    renderer.batch(instances: instances, camera: self.camera)
+    if !instances.isEmpty {
+      renderer.batch(instances: instances, camera: self.camera)
+    }
   }
 
   func resize(_ size: Size<Int>) {

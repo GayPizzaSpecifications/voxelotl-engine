@@ -3,8 +3,6 @@ add_executable(Voxelotl MACOSX_BUNDLE
 
   test.png
 
-  Chunk.swift
-
   shadertypes.h
   shader.metal
 
@@ -14,12 +12,17 @@ add_executable(Voxelotl MACOSX_BUNDLE
   AABB.swift
   Color.swift
 
+  Random/RandomProvider.swift
+  Random/Arc4Random.swift
+
   NSImageLoader.swift
   Renderer.swift
   GameController.swift
+  FPSCalculator.swift
+
+  Chunk.swift
   Camera.swift
   Player.swift
-  FPSCalculator.swift
   GameDelegate.swift
   Application.swift
 
@@ -61,3 +64,4 @@ set_source_files_properties(test.png PROPERTIES MACOSX_PACKAGE_LOCATION Resource
 
 source_group("Resources" FILES Assets.xcassets test.png)
 source_group("Source Files" REGULAR_EXPRESSION "\\.(swift|metal)$")
+source_group("Source Files\\Random" REGULAR_EXPRESSION "Random/")
