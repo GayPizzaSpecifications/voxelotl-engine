@@ -33,7 +33,9 @@ class Game: GameDelegate {
   }
 
   private func generateWorld() {
-    var random = DarwinRandom(seed: Arc4Random.instance.next(in: DarwinRandom.max))
+    let newSeed = Arc4Random.instance.next(in: DarwinRandom.max)
+    printErr(newSeed)
+    var random = DarwinRandom(seed: newSeed)
     self.chunk.fill(allBy: {
       if (random.next() & 0x1) == 0x1 {
         .solid(.init(rgb888: UInt32(random.next(in: 0..<0xFFFFFF+1))).linear)
