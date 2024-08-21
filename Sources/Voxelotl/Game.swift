@@ -34,14 +34,9 @@ class Game: GameDelegate {
 
   private func generateWorld() {
     var random = DarwinRandom(seed: Arc4Random.instance.next(in: DarwinRandom.max))
-    let colors: [Color<UInt8>] = [
-      .white,
-      .red, .blue, .green,
-      .magenta, .yellow, .cyan
-    ]
     self.chunk.fill(allBy: {
       if (random.next() & 0x1) == 0x1 {
-        .solid(colors[random.next(in: 0..<colors.count)])
+        .solid(.init(rgb888: UInt32(random.next(in: 0..<0xFFFFFF+1))))
       } else {
         .air
       }
@@ -84,9 +79,6 @@ class Game: GameDelegate {
   }
 
   func draw(_ renderer: Renderer, _ time: GameTime) {
-    let totalTime = Float(time.total.asFloat)
-    let cubeSpeedMul: Float = 0.1
-
     let instances = chunk.compactMap { block, position in
       if case let .solid(color) = block.type {
         Instance(
