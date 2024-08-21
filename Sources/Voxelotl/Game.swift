@@ -25,18 +25,21 @@ class Game: GameDelegate {
   var player = Player()
   var projection: matrix_float4x4 = .identity
   var chunk = Chunk(position: .zero)
-  var random = Arc4Random.instance
 
   init() {
-    player.position = SIMD3(0.5, Float(Chunk.chunkSize) + 0.5, 0.5)
-    player.rotation = .init(.pi, 0)
+    self.player.position = SIMD3(0.5, Float(Chunk.chunkSize) + 0.5, 0.5)
+    self.player.rotation = .init(.pi, 0)
+    self.generateWorld()
+  }
 
+  private func generateWorld() {
+    var random = DarwinRandom(seed: Arc4Random.instance.next(in: DarwinRandom.max))
     let colors: [Color<UInt8>] = [
       .white,
       .red, .blue, .green,
       .magenta, .yellow, .cyan
     ]
-    chunk.fill(allBy: {
+    self.chunk.fill(allBy: {
       if (random.next() & 0x1) == 0x1 {
         .solid(colors[random.next(in: 0..<colors.count)])
       } else {
@@ -59,19 +62,25 @@ class Game: GameDelegate {
     if let pad = GameController.current?.state {
       // Delete block underneath player
       if pad.pressed(.south) {
-        chunk.setBlock(at: SIMD3(player.position + .down * 0.2), type: .air)
+        self.chunk.setBlock(at: SIMD3(player.position + .down * 0.2), type: .air)
       }
+
       // Player reset
       if pad.pressed(.back) {
-        player.position = .init(repeating: 0.5) + .init(0, Float(Chunk.chunkSize), 0)
-        player.velocity = .zero
-        player.rotation = .init(.pi, 0)
+        self.player.position = .init(repeating: 0.5) + .init(0, Float(Chunk.chunkSize), 0)
+        self.player.velocity = .zero
+        self.player.rotation = .init(.pi, 0)
+      }
+
+      // Regenerate
+      if pad.pressed(.start) {
+        self.generateWorld()
       }
     }
 
-    player.update(deltaTime: deltaTime, chunk: chunk)
-    camera.position = player.eyePosition
-    camera.rotation = player.eyeRotation
+    self.player.update(deltaTime: deltaTime, chunk: chunk)
+    self.camera.position = player.eyePosition
+    self.camera.rotation = player.eyeRotation
   }
 
   func draw(_ renderer: Renderer, _ time: GameTime) {

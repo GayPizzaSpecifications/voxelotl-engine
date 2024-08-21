@@ -358,7 +358,7 @@ public class Renderer {
     let instancesBytes = numInstances * MemoryLayout<VertexShaderInstance>.stride
 
     // (Re)create instance buffer if needed
-    if self._instances[self.currentFrame] == nil || numInstances > self._instances[self.currentFrame]!.length {
+    if self._instances[self.currentFrame] == nil || instancesBytes > self._instances[self.currentFrame]!.length {
       guard let instanceBuffer = self.device.makeBuffer(
         length: instancesBytes,
         options: .storageModeManaged)

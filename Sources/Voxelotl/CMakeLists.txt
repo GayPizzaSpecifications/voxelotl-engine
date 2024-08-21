@@ -13,7 +13,9 @@ add_executable(Voxelotl MACOSX_BUNDLE
   Color.swift
 
   Random/RandomProvider.swift
+  Random/RandomRange.swift
   Random/Arc4Random.swift
+  Random/DarwinRandom.swift
 
   NSImageLoader.swift
   Renderer.swift
