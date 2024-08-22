@@ -18,7 +18,8 @@ add_executable(Voxelotl MACOSX_BUNDLE
   Random/RandomProvider.swift
   Random/RandomRange.swift
   Random/Arc4Random.swift
-  Random/DarwinRandom.swift
+  Random/PCG32Random.swift
+  Random/Xoroshiro128.swift
 
   # Resource classes
   NSImageLoader.swift

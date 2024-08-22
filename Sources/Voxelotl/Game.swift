@@ -33,9 +33,15 @@ class Game: GameDelegate {
   }
 
   private func generateWorld() {
-    let newSeed = Arc4Random.instance.next(in: DarwinRandom.max)
+#if true
+    let newSeed = UInt64(Arc4Random.instance.next()) | UInt64(Arc4Random.instance.next()) << 32
     printErr(newSeed)
-    var random = DarwinRandom(seed: newSeed)
+    var random = Xoroshiro128PlusPlus(seed: newSeed)
+#else
+    var random = PCG32Random(
+      seed: UInt64(Arc4Random.instance.next()) | UInt64(Arc4Random.instance.next()) << 32,
+      sequence: UInt64(Arc4Random.instance.next()) | UInt64(Arc4Random.instance.next()) << 32)
+#endif
     self.chunk.fill(allBy: {
       if (random.next() & 0x1) == 0x1 {
         .solid(.init(rgb888: UInt32(random.next(in: 0..<0xFFFFFF+1))).linear)
