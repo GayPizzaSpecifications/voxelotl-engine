@@ -14,6 +14,7 @@ struct Player {
   static let airAccelCoeff: Float = 3
   static let gravityCoeff: Float = 20
   static let frictionCoeff: Float = 22
+  static let flySpeedCoeff: Float = 36
   static let jumpVelocity: Float = 7
   static let maxVelocity: Float = 160
 
@@ -34,47 +35,84 @@ struct Player {
     .init(angle: self._rotation.x, axis: .up)
   }
 
-  mutating func update(deltaTime: Float, chunk: Chunk) {
-    if let pad = GameController.current?.state {
-      // Turning input
-      let turning = pad.rightStick.radialDeadzone(min: 0.1, max: 1)
-      _rotation += turning * deltaTime * 3.0
-      if self._rotation.x < 0.0 {
-        self._rotation.x += .pi * 2
-      } else if _rotation.x > .pi * 2 {
-        self._rotation.x -= .pi * 2
-      }
-      self._rotation.y = self._rotation.y.clamp(-.pi * 0.5, .pi * 0.5)
+  enum JumpInput { case off, press, held }
 
-      // Jumping
+  mutating func update(deltaTime: Float, chunk: Chunk) {
+    var turning: SIMD2<Float> = .zero
+    var movement: SIMD2<Float> = .zero
+    var flying: Float = .zero
+    var jumpInput: JumpInput = .off
+
+    // Read controller input (if one is plugged in)
+    if let pad = GameController.current?.state {
+      turning += pad.rightStick.radialDeadzone(min: 0.1, max: 1)
+      movement += pad.leftStick.cardinalDeadzone(min: 0.1, max: 1)
+      flying += pad.rightTrigger.axisDeadzone(0.01, 1) - pad.leftTrigger.axisDeadzone(0.01, 1)
       if pad.pressed(.east) {
-        self._shouldJump = 0.3
-      } else if self._shouldJump != .none {
-        if pad.down(.east) {
-          self._shouldJump! -= deltaTime
-          if self._shouldJump! <= 0.0 {
-            self._shouldJump = .none
-          }
-        } else {
+        jumpInput = .press
+      } else if jumpInput != .press && pad.down(.east) {
+        jumpInput = .held
+      }
+    }
+
+    // Read keyboard input
+    if Keyboard.down(.w) { movement.y -= 1 }
+    if Keyboard.down(.s) { movement.y += 1 }
+    if Keyboard.down(.a) { movement.x -= 1 }
+    if Keyboard.down(.d) { movement.x += 1 }
+    if Keyboard.down(.up)    { turning.y -= 1 }
+    if Keyboard.down(.down)  { turning.y += 1 }
+    if Keyboard.down(.left)  { turning.x -= 1 }
+    if Keyboard.down(.right) { turning.x += 1 }
+    if Keyboard.down(.q) { flying += 1 }
+    if Keyboard.down(.e) { flying -= 1 }
+    if Keyboard.pressed(.space) {
+      jumpInput = .press
+    } else if jumpInput != .press && Keyboard.down(.space) {
+      jumpInput = .held
+    }
+
+    // Turning input
+    self._rotation += turning * deltaTime * 3.0
+    if self._rotation.x < 0.0 {
+      self._rotation.x += .pi * 2
+    } else if _rotation.x > .pi * 2 {
+      self._rotation.x -= .pi * 2
+    }
+    self._rotation.y = self._rotation.y.clamp(-.pi * 0.5, .pi * 0.5)
+
+    // Jumping
+    if jumpInput == .press {
+      self._shouldJump = 0.3
+    } else if self._shouldJump != .none {
+      if jumpInput == .held {
+        self._shouldJump! -= deltaTime
+        if self._shouldJump! <= 0.0 {
           self._shouldJump = .none
         }
-      }
-      if self._onGround && self._shouldJump != .none {
-        self._velocity.y = Self.jumpVelocity
-        self._onGround = false
+      } else {
         self._shouldJump = .none
       }
-
-      // Movement (slower in air than on ground)
-      let movement = pad.leftStick.cardinalDeadzone(min: 0.1, max: 1)
-      let rotc = cos(self._rotation.x), rots = sin(self._rotation.x)
-      let coeff = self._onGround ? Self.accelerationCoeff : Self.airAccelCoeff
-      self._velocity.x += (movement.x * rotc - movement.y * rots) * coeff * deltaTime
-      self._velocity.z += (movement.y * rotc + movement.x * rots) * coeff * deltaTime
-
-      // Flying and unflying
-      self._velocity.y += (pad.rightTrigger - pad.leftTrigger) * 36 * deltaTime
     }
+    if self._onGround && self._shouldJump != .none {
+      self._velocity.y = Self.jumpVelocity
+      self._onGround = false
+      self._shouldJump = .none
+    }
+
+    // Movement (slower in air than on ground)
+    let movementMagnitude = simd_length(movement)
+    if movementMagnitude > 1.0 {
+      movement /= movementMagnitude
+    }
+    let rotc = cos(self._rotation.x), rots = sin(self._rotation.x)
+    let coeff = self._onGround ? Self.accelerationCoeff : Self.airAccelCoeff
+    self._velocity.x += (movement.x * rotc - movement.y * rots) * coeff * deltaTime
+    self._velocity.z += (movement.y * rotc + movement.x * rots) * coeff * deltaTime
+
+    // Flying and unflying
+    flying = flying.clamp(-1, 1)
+    self._velocity.y += flying * Self.flySpeedCoeff * deltaTime
 
     // Apply gravity
     self._velocity.y -= Self.gravityCoeff * deltaTime

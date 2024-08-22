@@ -69,6 +69,7 @@ public class Application {
   }
 
   private func beginHandleEvents() {
+    Keyboard.instance.newFrame()
     GameController.instance.newFrame()
   }
 
@@ -82,8 +83,12 @@ public class Application {
       case SDLK_ESCAPE:
         return .exitSuccess
       default:
-        break
+        Keyboard.instance.keyDownEvent(scan: event.key.scancode, repeat: event.key.repeat != 0)
       }
+      return .running
+
+    case SDL_EVENT_KEY_UP:
+      Keyboard.instance.keyUpEvent(scan: event.key.scancode)
       return .running
 
     case SDL_EVENT_GAMEPAD_ADDED:

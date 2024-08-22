@@ -27,9 +27,14 @@ class Game: GameDelegate {
   var chunk = Chunk(position: .zero)
 
   init() {
-    self.player.position = SIMD3(0.5, Float(Chunk.chunkSize) + 0.5, 0.5)
-    self.player.rotation = .init(.pi, 0)
+    self.resetPlayer()
     self.generateWorld()
+  }
+
+  private func resetPlayer() {
+    self.player.position = .init(repeating: 0.5) + .init(0, Float(Chunk.chunkSize), 0)
+    self.player.velocity = .zero
+    self.player.rotation = .init(.pi, 0)
   }
 
   private func generateWorld() {
@@ -70,15 +75,20 @@ class Game: GameDelegate {
 
       // Player reset
       if pad.pressed(.back) {
-        self.player.position = .init(repeating: 0.5) + .init(0, Float(Chunk.chunkSize), 0)
-        self.player.velocity = .zero
-        self.player.rotation = .init(.pi, 0)
+        self.resetPlayer()
       }
 
       // Regenerate
       if pad.pressed(.start) {
         self.generateWorld()
       }
+    }
+
+    if Keyboard.pressed(.r) {
+      self.resetPlayer()
+    }
+    if Keyboard.pressed(.g) {
+      self.generateWorld()
     }
 
     self.player.update(deltaTime: deltaTime, chunk: chunk)

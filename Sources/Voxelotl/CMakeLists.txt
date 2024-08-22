@@ -28,6 +28,7 @@ add_executable(Voxelotl MACOSX_BUNDLE
   Color.swift
   Camera.swift
   Renderer.swift
+  Keyboard.swift
   GameController.swift
   FPSCalculator.swift
   GameDelegate.swift
