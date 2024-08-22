@@ -1,5 +1,7 @@
-struct Xoroshiro128Plus: RandomProvider {
+struct Xoroshiro128Plus: RandomProvider, RandomSeedable, RandomStateAccess {
   public typealias Output = UInt64
+  public typealias SeedType = UInt64
+  public typealias StateType = (UInt64, UInt64)
 
   static public var min: UInt64 { .min }
   static public var max: UInt64 { .max }
@@ -36,8 +38,10 @@ struct Xoroshiro128Plus: RandomProvider {
   }
 }
 
-struct Xoroshiro128PlusPlus: RandomProvider {
+struct Xoroshiro128PlusPlus: RandomProvider, RandomSeedable, RandomStateAccess {
   public typealias Output = UInt64
+  public typealias SeedType = UInt64
+  public typealias StateType = (UInt64, UInt64)
 
   static public var min: UInt64 { .min }
   static public var max: UInt64 { .max }
@@ -74,8 +78,10 @@ struct Xoroshiro128PlusPlus: RandomProvider {
   }
 }
 
-struct Xoroshiro128StarStar: RandomProvider {
+struct Xoroshiro128StarStar: RandomProvider, RandomSeedable, RandomStateAccess {
   public typealias Output = UInt64
+  public typealias SeedType = UInt64
+  public typealias StateType = (UInt64, UInt64)
 
   static public var min: UInt64 { .min }
   static public var max: UInt64 { .max }

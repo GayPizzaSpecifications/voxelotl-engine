@@ -1,5 +1,6 @@
-public struct PCG32Random: RandomProvider {
+public struct PCG32Random: RandomProvider, RandomStateAccess {
   public typealias Output = UInt32
+  public typealias StateType = (UInt64, UInt64)
 
   public static var min: UInt32 { .min }
   public static var max: UInt32 { .max }
@@ -19,12 +20,12 @@ public struct PCG32Random: RandomProvider {
     self._inc   = 0xDA3E39CB94B95BDB
   }
 
-  public init(seed: UInt64, sequence: UInt64) {
+  public init(state: (UInt64, UInt64)) {
     self.init()
-    self.seed(state: _state, sequence: sequence)
+    self.reset(state: state.0, sequence: state.1)
   }
 
-  public mutating func seed(state: UInt64, sequence: UInt64) {
+  public mutating func reset(state: UInt64, sequence: UInt64) {
     self._state = 0
     self._inc   = sequence << 1 | 0x1
     _ = next()
