@@ -26,6 +26,8 @@ class Game: GameDelegate {
   var projection: matrix_float4x4 = .identity
   var chunk = Chunk(position: .zero)
 
+  var rayhitPos = SIMD3<Float>.zero
+
   init() {
     self.resetPlayer()
     self.generateWorld()
@@ -75,10 +77,10 @@ class Game: GameDelegate {
 
     let deltaTime = min(Float(time.delta.asFloat), 1.0 / 15)
 
+    var destroy = false
     if let pad = GameController.current?.state {
-      // Delete block underneath player
       if pad.pressed(.south) {
-        self.chunk.setBlock(at: SIMD3(player.position + .down * 0.2), type: .air)
+        destroy = true
       }
 
       // Player reset
@@ -102,17 +104,40 @@ class Game: GameDelegate {
     self.player.update(deltaTime: deltaTime, chunk: chunk)
     self.camera.position = player.eyePosition
     self.camera.rotation = player.eyeRotation
+
+    if let hit = raycast(
+      chunk: chunk,
+      origin: player.eyePosition,
+      direction: .forward * simd_matrix3x3(player.eyeRotation),
+      maxDistance: 3.333
+    ) {
+      self.rayhitPos = hit.position
+      if destroy {
+        self.chunk.setBlock(at: hit.map, type: .air)
+      }
+    }
   }
 
   func draw(_ renderer: Renderer, _ time: GameTime) {
-    let instances = chunk.compactMap { block, position in
+    let totalTime = Float(time.total.asFloat)
+
+    var instances = chunk.compactMap { block, position in
       if case let .solid(color) = block.type {
         Instance(
-          position: SIMD3<Float>(position) + 0.5,
+          position: SIMD3<Float>(chunk.position &+ position) + 0.5,
           scale:    .init(repeating: 0.5),
           color:    color)
       } else { nil }
     }
+    instances.append(
+      Instance(
+        position: rayhitPos,
+        scale:    .init(repeating: 0.0725 * 0.5),
+        rotation:
+          .init(angle: totalTime * 3.0, axis: .init(0, 1, 0)) *
+          .init(angle: totalTime * 1.5, axis: .init(1, 0, 0)) *
+          .init(angle: totalTime * 0.7, axis: .init(0, 0, 1)),
+        color:    .init(r: 0.5, g: 0.5, b: 1).linear))
     if !instances.isEmpty {
       renderer.batch(instances: instances, camera: self.camera)
     }
