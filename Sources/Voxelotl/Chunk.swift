@@ -43,9 +43,15 @@ public struct Chunk {
     blocks[position.x + position.y * Self.yStride + position.z * Self.zStride].type = type
   }
   
-  mutating func fill(allBy calculation: () -> BlockType) {
-    blocks.indices.forEach { i in
-      blocks[i].type = calculation()
+  mutating func fill(allBy calculation: (_ position: SIMD3<Int>) -> BlockType) {
+    var i = 0
+    for x in 0..<Self.chunkSize {
+      for y in 0..<Self.chunkSize {
+        for z in 0..<Self.chunkSize {
+          blocks[i].type = calculation(SIMD3(x, y, z))
+          i += 1
+        }
+      }
     }
   }
   

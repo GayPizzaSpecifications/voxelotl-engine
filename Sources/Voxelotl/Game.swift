@@ -38,18 +38,26 @@ class Game: GameDelegate {
   }
 
   private func generateWorld() {
+    var random: any RandomProvider
 #if true
     let newSeed = UInt64(Arc4Random.instance.next()) | UInt64(Arc4Random.instance.next()) << 32
     printErr(newSeed)
-    var random = Xoroshiro128PlusPlus(seed: newSeed)
+    random = Xoroshiro128PlusPlus(seed: newSeed)
 #else
-    var random = PCG32Random(
-      seed: UInt64(Arc4Random.instance.next()) | UInt64(Arc4Random.instance.next()) << 32,
-      sequence: UInt64(Arc4Random.instance.next()) | UInt64(Arc4Random.instance.next()) << 32)
+    random = PCG32Random(state: (
+        UInt64(Arc4Random.instance.next()) | UInt64(Arc4Random.instance.next()) << 32,
+        UInt64(Arc4Random.instance.next()) | UInt64(Arc4Random.instance.next()) << 32))
 #endif
-    self.chunk.fill(allBy: {
-      if (random.next() & 0x1) == 0x1 {
-        .solid(.init(rgb888: UInt32(random.next(in: 0..<0xFFFFFF+1))).linear)
+    let noise = ImprovedPerlin<Float>(random: &random)
+    self.chunk.fill(allBy: { position in
+      let fpos = SIMD3<Float>(position)
+      return if fpos.y / Float(Chunk.chunkSize)
+          + noise.get(fpos * 0.07) * 0.7
+          + noise.get(fpos * 0.321 + 100) * 0.3 < 0.6 {
+        .solid(.init(
+          r: Float16(noise.get(fpos * 0.1)),
+          g: Float16(noise.get(fpos * 0.1 + 10)),
+          b: Float16(noise.get(fpos * 0.1 + 100))).mix(.white, 0.4).linear)
       } else {
         .air
       }
