@@ -26,12 +26,15 @@ add_executable(Voxelotl MACOSX_BUNDLE
   # Resource classes
   NSImageLoader.swift
 
+  # Input wrappers
+  Input/Keyboard.swift
+  Input/GameController.swift
+  Input/Mouse.swift
+
   # Core utility classes
   Color.swift
   Camera.swift
   Renderer.swift
-  Keyboard.swift
-  GameController.swift
   FPSCalculator.swift
   GameDelegate.swift
   Application.swift
@@ -81,3 +84,4 @@ source_group("Resources" FILES Assets.xcassets test.png)
 source_group("Source Files" REGULAR_EXPRESSION "\\.(swift|metal)$")
 source_group("Source Files\\Random" REGULAR_EXPRESSION "Random/")
 source_group("Source Files\\Math" REGULAR_EXPRESSION "Math/")
+source_group("Source Files\\Input" REGULAR_EXPRESSION "Input/")

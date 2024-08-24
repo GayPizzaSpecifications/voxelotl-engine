@@ -50,7 +50,7 @@ struct Player {
     // Read controller input (if one is plugged in)
     if let pad = GameController.current?.state {
       turning += pad.rightStick.radialDeadzone(min: 0.1, max: 1)
-      movement += pad.leftStick.cardinalDeadzone(min: 0.1, max: 1)
+      movement = pad.leftStick.cardinalDeadzone(min: 0.1, max: 1)
       flying += (pad.down(.rightBumper) ? 1 : 0) - (pad.down(.leftBumper) ? 1 : 0)
       if pad.pressed(.east) {
         jumpInput = .press
@@ -72,17 +72,20 @@ struct Player {
     if Keyboard.down(.s) { movement.y += 1 }
     if Keyboard.down(.a) { movement.x -= 1 }
     if Keyboard.down(.d) { movement.x += 1 }
-    if Keyboard.down(.up)    { turning.y -= 1 }
-    if Keyboard.down(.down)  { turning.y += 1 }
-    if Keyboard.down(.left)  { turning.x -= 1 }
-    if Keyboard.down(.right) { turning.x += 1 }
-    if Keyboard.down(.tab) { flying += 1 }
-    if Keyboard.pressed(.q) { place   = true }
-    if Keyboard.pressed(.e) { destroy = true }
+    if Keyboard.down(.q) { flying += 1 }
+    if Keyboard.down(.e) { flying -= 1 }
+    if Keyboard.pressed(.tab) { Mouse.capture = !Mouse.capture }
     if Keyboard.pressed(.space) {
       jumpInput = .press
     } else if jumpInput != .press && Keyboard.down(.space) {
       jumpInput = .held
+    }
+
+    // Read mouse input
+    if Mouse.pressed(.left)  { destroy = true }
+    if Mouse.pressed(.right) { place   = true }
+    if Mouse.capture {
+      self._rotation += Mouse.relative / 2048 * Float.pi
     }
 
     // Turning input

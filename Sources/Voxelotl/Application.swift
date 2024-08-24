@@ -71,6 +71,7 @@ public class Application {
   private func beginHandleEvents() {
     Keyboard.instance.newFrame()
     GameController.instance.newFrame()
+    Mouse.instance.newFrame(window!)
   }
 
   private func handleEvent(_ event: SDL_Event) -> ApplicationExecutionState {
@@ -106,6 +107,17 @@ public class Application {
     case SDL_EVENT_GAMEPAD_BUTTON_DOWN, SDL_EVENT_GAMEPAD_BUTTON_UP:
       GameController.instance.buttonEvent(id: event.gbutton.which,
         btn: SDL_GamepadButton(Int32(event.gbutton.button)), state: event.gbutton.state)
+      return .running
+
+    case SDL_EVENT_MOUSE_BUTTON_DOWN, SDL_EVENT_MOUSE_BUTTON_UP:
+      Mouse.instance.buttonEvent(
+        btn: UInt32(event.button.button),
+        state: event.button.state)
+      return .running
+    case SDL_EVENT_MOUSE_MOTION:
+      Mouse.instance.motionEvent(
+        absolute: SIMD2(event.motion.x, event.motion.y),
+        relative: SIMD2(event.motion.xrel, event.motion.yrel))
       return .running
 
     case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
