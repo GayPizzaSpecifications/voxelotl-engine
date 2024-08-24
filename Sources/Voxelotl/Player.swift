@@ -25,6 +25,9 @@ struct Player {
   private var _onGround: Bool = false
   private var _shouldJump: Optional<Float> = .none
 
+  public var rayhitPos = SIMD3<Float>.zero
+  private var prevLeftTrigger: Float = 0, prevRightTrigger: Float = 0
+
   public var position: SIMD3<Float> { get { self._position } set { self._position = newValue } }
   public var velocity: SIMD3<Float> { get { self._velocity } set { self._velocity = newValue } }
   public var rotation: SIMD2<Float> { get { self._rotation } set { self._rotation = newValue } }
@@ -37,22 +40,31 @@ struct Player {
 
   enum JumpInput { case off, press, held }
 
-  mutating func update(deltaTime: Float, chunk: Chunk) {
+  mutating func update(deltaTime: Float, chunk: inout Chunk) {
     var turning: SIMD2<Float> = .zero
     var movement: SIMD2<Float> = .zero
-    var flying: Float = .zero
+    var flying: Int = .zero
     var jumpInput: JumpInput = .off
+    var destroy = false, place = false
 
     // Read controller input (if one is plugged in)
     if let pad = GameController.current?.state {
       turning += pad.rightStick.radialDeadzone(min: 0.1, max: 1)
       movement += pad.leftStick.cardinalDeadzone(min: 0.1, max: 1)
-      flying += pad.rightTrigger.axisDeadzone(0.01, 1) - pad.leftTrigger.axisDeadzone(0.01, 1)
+      flying += (pad.down(.rightBumper) ? 1 : 0) - (pad.down(.leftBumper) ? 1 : 0)
       if pad.pressed(.east) {
         jumpInput = .press
       } else if jumpInput != .press && pad.down(.east) {
         jumpInput = .held
       }
+      if pad.leftTrigger > 0.4 && prevLeftTrigger < 0.4 {
+        place = true
+      }
+      if pad.rightTrigger > 0.4 && prevRightTrigger < 0.4 {
+        destroy = true
+      }
+      prevLeftTrigger = pad.leftTrigger
+      prevRightTrigger = pad.rightTrigger
     }
 
     // Read keyboard input
@@ -64,8 +76,9 @@ struct Player {
     if Keyboard.down(.down)  { turning.y += 1 }
     if Keyboard.down(.left)  { turning.x -= 1 }
     if Keyboard.down(.right) { turning.x += 1 }
-    if Keyboard.down(.q) { flying += 1 }
-    if Keyboard.down(.e) { flying -= 1 }
+    if Keyboard.down(.tab) { flying += 1 }
+    if Keyboard.pressed(.q) { place   = true }
+    if Keyboard.pressed(.e) { destroy = true }
     if Keyboard.pressed(.space) {
       jumpInput = .press
     } else if jumpInput != .press && Keyboard.down(.space) {
@@ -111,14 +124,13 @@ struct Player {
     self._velocity.z += (movement.y * rotc + movement.x * rots) * coeff * deltaTime
 
     // Flying and unflying
-    flying = flying.clamp(-1, 1)
-    self._velocity.y += flying * Self.flySpeedCoeff * deltaTime
+    self._velocity.y += Float(flying).clamp(-1, 1) * Self.flySpeedCoeff * deltaTime
 
     // Apply gravity
     self._velocity.y -= Self.gravityCoeff * deltaTime
 
     // Move & handle collision
-    let checkCorner = { (bounds: AABB, corner: SIMD3<Float>) -> Optional<AABB> in
+    let checkCorner = { (chunk: Chunk, bounds: AABB, corner: SIMD3<Float>) -> Optional<AABB> in
       let blockPos = SIMD3(floor(corner.x), floor(corner.y), floor(corner.z))
       if case BlockType.solid = chunk.getBlock(at: SIMD3<Int>(blockPos)).type {
         let blockGeometry = AABB(from: blockPos, to: blockPos + 1)
@@ -128,7 +140,7 @@ struct Player {
       }
       return nil
     }
-    let checkCollision = { (position: SIMD3<Float>) -> Optional<AABB> in
+    let checkCollision = { (chunk: Chunk, position: SIMD3<Float>) -> Optional<AABB> in
       let bounds = Self.bounds + position
       let corners: [SIMD3<Float>] = [
         .init(bounds.left,  bounds.bottom,   bounds.far),
@@ -145,14 +157,14 @@ struct Player {
         .init(bounds.right, bounds.top,      bounds.near)
       ]
       for corner in corners {
-        if let geometry = checkCorner(bounds, corner) {
+        if let geometry = checkCorner(chunk, bounds, corner) {
           return geometry
         }
       }
       return nil
     }
     self._position.y += self._velocity.y * deltaTime
-    if let aabb = checkCollision(self._velocity.y > 0 ? self._position + .down * Self.epsilon : self.position) {
+    if let aabb = checkCollision(chunk, self._velocity.y > 0 ? self._position + .down * Self.epsilon : self.position) {
       if self._velocity.y < 0 {
         self._position.y = aabb.top + Self.epsilon
         self._onGround = true
@@ -165,7 +177,7 @@ struct Player {
       self._onGround = false
     }
     self._position.x += self._velocity.x * deltaTime
-    if let aabb = checkCollision(self._position) {
+    if let aabb = checkCollision(chunk, self._position) {
       if self._velocity.x < 0 {
         self._position.x = aabb.right + Self.radius + Self.epsilon
       } else {
@@ -174,13 +186,28 @@ struct Player {
       self._velocity.x = 0
     }
     self._position.z += self._velocity.z * deltaTime
-    if let aabb = checkCollision(self._position) {
+    if let aabb = checkCollision(chunk, self._position) {
       if self._velocity.z < 0 {
         self._position.z = aabb.near + Self.radius + Self.epsilon
       } else {
         self._position.z = aabb.far - Self.radius - Self.epsilon
       }
       self._velocity.z = 0
+    }
+
+    // Block picking
+    if let hit = raycast(
+      chunk: chunk,
+      origin: self.eyePosition,
+      direction: .forward * simd_matrix3x3(self.eyeRotation),
+      maxDistance: 3.666
+    ) {
+      self.rayhitPos = hit.position
+      if destroy {
+        chunk.setBlock(at: hit.map, type: .air)
+      } else if place {
+        chunk.setBlock(at: hit.map.offset(by: hit.side), type: .solid(.white))
+      }
     }
 
     // Ground friction

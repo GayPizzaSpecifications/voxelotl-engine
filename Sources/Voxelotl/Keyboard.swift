@@ -4,7 +4,7 @@ public class Keyboard {
   public enum Keys {
     case a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x, y, z
     case right, left, up, down
-    case space
+    case space, tab
   }
 
   public static func down(_ key: Keys) -> Bool {
@@ -90,6 +90,7 @@ internal extension Keyboard.Keys {
     case .up:    SDLK_UP
     case .down:  SDLK_DOWN
     case .space: SDLK_SPACE
+    case .tab:   SDLK_TAB
     }
   }
 
@@ -126,6 +127,7 @@ internal extension Keyboard.Keys {
     case .up:    SDL_SCANCODE_UP
     case .down:  SDL_SCANCODE_DOWN
     case .space: SDL_SCANCODE_SPACE
+    case .tab:   SDL_SCANCODE_TAB
     }
   }
 }

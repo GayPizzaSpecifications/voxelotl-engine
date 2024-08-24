@@ -26,8 +26,6 @@ class Game: GameDelegate {
   var projection: matrix_float4x4 = .identity
   var chunk = Chunk(position: .zero)
 
-  var rayhitPos = SIMD3<Float>.zero
-
   init() {
     self.resetPlayer()
     self.generateWorld()
@@ -79,10 +77,6 @@ class Game: GameDelegate {
 
     var destroy = false
     if let pad = GameController.current?.state {
-      if pad.pressed(.south) {
-        destroy = true
-      }
-
       // Player reset
       if pad.pressed(.back) {
         self.resetPlayer()
@@ -101,21 +95,9 @@ class Game: GameDelegate {
       self.generateWorld()
     }
 
-    self.player.update(deltaTime: deltaTime, chunk: chunk)
+    self.player.update(deltaTime: deltaTime, chunk: &chunk)
     self.camera.position = player.eyePosition
     self.camera.rotation = player.eyeRotation
-
-    if let hit = raycast(
-      chunk: chunk,
-      origin: player.eyePosition,
-      direction: .forward * simd_matrix3x3(player.eyeRotation),
-      maxDistance: 3.333
-    ) {
-      self.rayhitPos = hit.position
-      if destroy {
-        self.chunk.setBlock(at: hit.map, type: .air)
-      }
-    }
   }
 
   func draw(_ renderer: Renderer, _ time: GameTime) {
@@ -131,7 +113,7 @@ class Game: GameDelegate {
     }
     instances.append(
       Instance(
-        position: rayhitPos,
+        position: player.rayhitPos,
         scale:    .init(repeating: 0.0725 * 0.5),
         rotation:
           .init(angle: totalTime * 3.0, axis: .init(0, 1, 0)) *
