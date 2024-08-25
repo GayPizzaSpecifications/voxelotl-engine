@@ -1,7 +1,7 @@
 import simd
 
 public func raycast(
-  chunk: Chunk,
+  world: World,
   origin rayPosition: SIMD3<Float>,
   direction: SIMD3<Float>,
   maxDistance: Float
@@ -74,7 +74,7 @@ public func raycast(
     }
 
     // return a result if we hit something solid
-    if chunk.getBlock(at: mapPosition).type != .air {
+    if world.getBlock(at: mapPosition).type != .air {
       return .init(
         position: rayPosition + direction * distance,
         distance: distance,

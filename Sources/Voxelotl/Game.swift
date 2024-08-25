@@ -24,7 +24,7 @@ class Game: GameDelegate {
   var camera = Camera(fov: 60, size: .one, range: 0.06...900)
   var player = Player()
   var projection: matrix_float4x4 = .identity
-  var chunk = Chunk(position: .zero)
+  var world = World()
 
   func create(_ renderer: Renderer) {
     self.resetPlayer()
@@ -34,7 +34,7 @@ class Game: GameDelegate {
   }
 
   private func resetPlayer() {
-    self.player.position = .init(repeating: 0.5) + .init(0, Float(Chunk.chunkSize), 0)
+    self.player.position = .init(repeating: 0.5) + .init(0, Float(Chunk.size), 0)
     self.player.velocity = .zero
     self.player.rotation = .init(.pi, 0)
   }
@@ -50,20 +50,11 @@ class Game: GameDelegate {
         UInt64(Arc4Random.instance.next()) | UInt64(Arc4Random.instance.next()) << 32,
         UInt64(Arc4Random.instance.next()) | UInt64(Arc4Random.instance.next()) << 32))
 #endif
-    let noise = ImprovedPerlin<Float>(random: &random)
-    self.chunk.fill(allBy: { position in
-      let fpos = SIMD3<Float>(position)
-      return if fpos.y / Float(Chunk.chunkSize)
-          + noise.get(fpos * 0.07) * 0.7
-          + noise.get(fpos * 0.321 + 100) * 0.3 < 0.6 {
-        .solid(.init(
-          r: Float16(noise.get(fpos * 0.1)),
-          g: Float16(noise.get(fpos * 0.1 + 10)),
-          b: Float16(noise.get(fpos * 0.1 + 100))).mix(.white, 0.4).linear)
-      } else {
-        .air
-      }
-    })
+#if DEBUG
+      self.world.generate(width: 2, height: 1, depth: 1, random: &random)
+#else
+      self.world.generate(width: 5, height: 3, depth: 5, random: &random)
+#endif
   }
 
   func fixedUpdate(_ time: GameTime) {
@@ -77,27 +68,24 @@ class Game: GameDelegate {
 
     let deltaTime = min(Float(time.delta.asFloat), 1.0 / 15)
 
-    var destroy = false
+    var reset = false, generate = false
     if let pad = GameController.current?.state {
-      // Player reset
-      if pad.pressed(.back) {
-        self.resetPlayer()
-      }
-
-      // Regenerate
-      if pad.pressed(.start) {
-        self.generateWorld()
-      }
+      if pad.pressed(.back) { reset = true }
+      if pad.pressed(.start) { generate = true }
     }
+    if Keyboard.pressed(.r) { reset = true }
+    if Keyboard.pressed(.g) { generate = true }
 
-    if Keyboard.pressed(.r) {
+    // Player reset
+    if reset {
       self.resetPlayer()
     }
-    if Keyboard.pressed(.g) {
+    // Regenerate
+    if generate {
       self.generateWorld()
     }
 
-    self.player.update(deltaTime: deltaTime, chunk: &chunk)
+    self.player.update(deltaTime: deltaTime, world: world)
     self.camera.position = player.eyePosition
     self.camera.rotation = player.eyeRotation
   }
@@ -114,14 +102,7 @@ class Game: GameDelegate {
       specular: Color(rgba8888: 0x2F2F2F00).linear,
       gloss: 75)
 
-    var instances = chunk.compactMap { block, position in
-      if case let .solid(color) = block.type {
-        Instance(
-          position: SIMD3<Float>(chunk.position &+ position) + 0.5,
-          scale:    .init(repeating: 0.5),
-          color:    color)
-      } else { nil }
-    }
+    var instances = world.instances
     instances.append(
       Instance(
         position: player.rayhitPos,

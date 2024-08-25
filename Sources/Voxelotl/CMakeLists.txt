@@ -45,6 +45,7 @@ add_executable(Voxelotl MACOSX_BUNDLE
 
   # Game logic classes
   Chunk.swift
+  World.swift
   Raycast.swift
   Player.swift
   Game.swift
@@ -59,6 +60,7 @@ set_source_files_properties(
 
 target_include_directories(Voxelotl PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(Voxelotl PRIVATE SDLSwift)
+target_compile_definitions(Voxelotl PRIVATE $<$<CONFIG:Debug>:DEBUG>)
 set_target_properties(Voxelotl PROPERTIES
   XCODE_ATTRIBUTE_ENABLE_HARDENED_RUNTIME YES
   XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "gay.pizza.voxelotl"

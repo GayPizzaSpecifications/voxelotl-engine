@@ -8,7 +8,7 @@ struct Player {
     to: .init(Self.radius, Self.height, Self.radius))
 
   static let eyeLevel: Float = 1.4
-  static let epsilon = Float.ulpOfOne * 10
+  static let epsilon = Float.ulpOfOne * 20
 
   static let accelerationCoeff: Float = 75
   static let airAccelCoeff: Float = 3
@@ -40,7 +40,7 @@ struct Player {
 
   enum JumpInput { case off, press, held }
 
-  mutating func update(deltaTime: Float, chunk: inout Chunk) {
+  mutating func update(deltaTime: Float, world: World) {
     var turning: SIMD2<Float> = .zero
     var movement: SIMD2<Float> = .zero
     var flying: Int = .zero
@@ -133,9 +133,9 @@ struct Player {
     self._velocity.y -= Self.gravityCoeff * deltaTime
 
     // Move & handle collision
-    let checkCorner = { (chunk: Chunk, bounds: AABB, corner: SIMD3<Float>) -> Optional<AABB> in
+    let checkCorner = { (world: World, bounds: AABB, corner: SIMD3<Float>) -> Optional<AABB> in
       let blockPos = SIMD3(floor(corner.x), floor(corner.y), floor(corner.z))
-      if case BlockType.solid = chunk.getBlock(at: SIMD3<Int>(blockPos)).type {
+      if case BlockType.solid = world.getBlock(at: SIMD3<Int>(blockPos)).type {
         let blockGeometry = AABB(from: blockPos, to: blockPos + 1)
         if bounds.touching(blockGeometry) {
           return blockGeometry
@@ -143,7 +143,7 @@ struct Player {
       }
       return nil
     }
-    let checkCollision = { (chunk: Chunk, position: SIMD3<Float>) -> Optional<AABB> in
+    let checkCollision = { (world: World, position: SIMD3<Float>) -> Optional<AABB> in
       let bounds = Self.bounds + position
       let corners: [SIMD3<Float>] = [
         .init(bounds.left,  bounds.bottom,   bounds.far),
@@ -160,14 +160,14 @@ struct Player {
         .init(bounds.right, bounds.top,      bounds.near)
       ]
       for corner in corners {
-        if let geometry = checkCorner(chunk, bounds, corner) {
+        if let geometry = checkCorner(world, bounds, corner) {
           return geometry
         }
       }
       return nil
     }
     self._position.y += self._velocity.y * deltaTime
-    if let aabb = checkCollision(chunk, self._velocity.y > 0 ? self._position + .down * Self.epsilon : self.position) {
+    if let aabb = checkCollision(world, self._velocity.y > 0 ? self._position + .down * Self.epsilon : self.position) {
       if self._velocity.y < 0 {
         self._position.y = aabb.top + Self.epsilon
         self._onGround = true
@@ -180,7 +180,7 @@ struct Player {
       self._onGround = false
     }
     self._position.x += self._velocity.x * deltaTime
-    if let aabb = checkCollision(chunk, self._position) {
+    if let aabb = checkCollision(world, self._position) {
       if self._velocity.x < 0 {
         self._position.x = aabb.right + Self.radius + Self.epsilon
       } else {
@@ -189,7 +189,7 @@ struct Player {
       self._velocity.x = 0
     }
     self._position.z += self._velocity.z * deltaTime
-    if let aabb = checkCollision(chunk, self._position) {
+    if let aabb = checkCollision(world, self._position) {
       if self._velocity.z < 0 {
         self._position.z = aabb.near + Self.radius + Self.epsilon
       } else {
@@ -200,16 +200,16 @@ struct Player {
 
     // Block picking
     if let hit = raycast(
-      chunk: chunk,
+      world: world,
       origin: self.eyePosition,
       direction: .forward * simd_matrix3x3(self.eyeRotation),
       maxDistance: 3.8
     ) {
       self.rayhitPos = hit.position
       if destroy {
-        chunk.setBlock(at: hit.map, type: .air)
+        world.setBlock(at: hit.map, type: .air)
       } else if place {
-        chunk.setBlock(at: hit.map.offset(by: hit.side), type: .solid(.white))
+        world.setBlock(at: hit.map.offset(by: hit.side), type: .solid(.white))
       }
     }
 

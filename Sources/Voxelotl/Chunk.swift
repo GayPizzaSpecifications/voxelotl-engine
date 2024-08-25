@@ -1,21 +1,24 @@
 public struct Chunk {
-  public static let chunkSize: Int = 16
-  public static let blockCount = chunkSize * chunkSize * chunkSize
+  public static let shift = 4  // 16
+  public static let size: Int = 1 << shift
+  public static let mask: Int = size - 1
 
-  private static let yStride = chunkSize
-  private static let zStride = chunkSize * chunkSize
+  public static let blockCount = size * size * size
+
+  private static let yStride = size
+  private static let zStride = size * size
   
-  public let position: SIMD3<Int>
+  public let origin: SIMD3<Int>
   private var blocks: [Block]
   
   init(position: SIMD3<Int>, blocks: [Block]) {
     assert(blocks.count == Self.blockCount)
-    self.position = position
+    self.origin = position
     self.blocks = blocks
   }
   
   init(position: SIMD3<Int>) {
-    self.position = position
+    self.origin = position
     self.blocks = Array(
       repeating: BlockType.air,
       count: Self.blockCount
@@ -23,47 +26,40 @@ public struct Chunk {
   }
 
   func getBlock(at position: SIMD3<Int>) -> Block {
+    getBlock(internal: position &- self.origin)
+  }
+
+  func getBlock(internal position: SIMD3<Int>) -> Block {
     if position.x < 0 || position.y < 0 || position.z < 0 {
       Block(.air)
-    } else if position.x >= Self.chunkSize || position.y >= Self.chunkSize || position.z >= Self.chunkSize {
+    } else if position.x >= Self.size || position.y >= Self.size || position.z >= Self.size {
       Block(.air)
     } else {
       blocks[position.x + position.y * Self.yStride + position.z * Self.zStride]
     }
   }
-  
+
   mutating func setBlock(at position: SIMD3<Int>, type: BlockType) {
+    setBlock(internal: position &- self.origin, type: type)
+  }
+
+  mutating func setBlock(internal position: SIMD3<Int>, type: BlockType) {
     if position.x < 0 || position.y < 0 || position.z < 0 {
       return
     }
-    if position.x >= Self.chunkSize || position.y >= Self.chunkSize || position.z >= Self.chunkSize {
+    if position.x >= Self.size || position.y >= Self.size || position.z >= Self.size {
       return
     }
     
     blocks[position.x + position.y * Self.yStride + position.z * Self.zStride].type = type
   }
-  
+
   mutating func fill(allBy calculation: (_ position: SIMD3<Int>) -> BlockType) {
-    var i = 0
-    for x in 0..<Self.chunkSize {
-      for y in 0..<Self.chunkSize {
-        for z in 0..<Self.chunkSize {
-          blocks[i].type = calculation(SIMD3(x, y, z))
-          i += 1
-        }
-      }
-    }
-  }
-  
-  func forEach(block perform: (Block, SIMD3<Int>) -> Void) {
-    for x in 0..<Self.chunkSize {
-      for y in 0..<Self.chunkSize {
-        for z in 0..<Self.chunkSize {
-          let idx = x + y * Self.yStride + z * Self.zStride
-          let position = SIMD3(x, y, z)
-          perform(blocks[idx], position)
-        }
-      }
+    for i in 0..<Self.blockCount {
+      let x = i & Self.mask
+      let y = (i &>> Self.shift) & Self.mask
+      let z = (i &>> (Self.shift + Self.shift)) & Self.mask
+      blocks[i].type = calculation(self.origin &+ SIMD3(x, y, z))
     }
   }
 
@@ -75,12 +71,12 @@ public struct Chunk {
 
     var position = SIMD3<Int>()
     for i in self.blocks.indices {
-      out.append(try transform(blocks[i], position))
+      out.append(try transform(blocks[i], self.origin &+ position))
       position.x += 1
-      if position.x == Self.chunkSize {
+      if position.x == Self.size {
         position.x = 0
         position.y += 1
-        if position.y == Self.chunkSize {
+        if position.y == Self.size {
           position.y = 0
           position.z += 1
         }
@@ -98,14 +94,14 @@ public struct Chunk {
 
     var position = SIMD3<Int>()
     for i in self.blocks.indices {
-      if let element = try transform(blocks[i], position) {
+      if let element = try transform(blocks[i], self.origin &+ position) {
         out.append(element)
       }
       position.x += 1
-      if position.x == Self.chunkSize {
+      if position.x == Self.size {
         position.x = 0
         position.y += 1
-        if position.y == Self.chunkSize {
+        if position.y == Self.size {
           position.y = 0
           position.z += 1
         }
