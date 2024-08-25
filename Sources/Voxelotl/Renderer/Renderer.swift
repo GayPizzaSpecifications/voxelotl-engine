@@ -353,9 +353,9 @@ public class Renderer {
     var fragUniforms = FragmentShaderUniforms(
       cameraPosition: camera.position,
       directionalLight: normalize(environment.lightDirection),
-      ambientColor:  SIMD4(Color<Float>(material.ambient)),
-      diffuseColor:  SIMD4(Color<Float>(material.diffuse)),
-      specularColor: SIMD4(Color<Float>(material.specular)),
+      ambientColor:  material.ambient.reinterpretUShort,
+      diffuseColor:  material.diffuse.reinterpretUShort,
+      specularColor: material.specular.reinterpretUShort,
       specularIntensity: material.gloss)
 
     let numInstances = instances.count
@@ -384,7 +384,7 @@ public class Renderer {
           .scale(instance.scale)
         data[i] = VertexShaderInstance(
           model: model, normalModel: model.inverse.transpose,
-          color: SIMD4(Color<Float>(instance.color)))
+          color: instance.color.reinterpretUShort)
       }
     }
     instanceBuffer.didModifyRange(0..<instancesBytes)
@@ -425,6 +425,12 @@ fileprivate extension MTLCullMode {
     case .front: .front
     case .back: .back
     }
+  }
+}
+
+fileprivate extension Color where T == Float16 {
+  var reinterpretUShort: SIMD4<UInt16> {
+    .init(self.r.bitPattern, self.g.bitPattern, self.b.bitPattern, self.a.bitPattern)
   }
 }
 

@@ -45,18 +45,18 @@ fragment half4 fragmentMain(
   // Compute diffuse component
   float lambert = metal::dot(normal, lightVec);
   float diffuseAmount = metal::max(0.0, lambert);
-  half4 diffuse = half4(u.diffuseColor) * diffuseAmount;
+  half4 diffuse = u.diffuseColor * diffuseAmount;
 
   // Compute specular component (blinn-phong)
   float specularAngle = metal::max(0.0, metal::dot(halfDir, normal));
   float specularTerm = metal::pow(specularAngle, u.specularIntensity);
   // smoothstep hack to ensure highlight tapers gracefully at grazing angles
   float specularAmount = specularTerm * metal::smoothstep(0, 2, lambert * u.specularIntensity);
-  half4 specular = half4(u.specularColor) * specularAmount;
+  half4 specular = u.specularColor * specularAmount;
 
   // Sample texture & vertex color to get albedo
   half4 albedo = texture.sample(sampler, in.texCoord);
   albedo *= in.color;
 
-  return albedo * (half4(u.ambientColor) + diffuse) + specular;
+  return albedo * (u.ambientColor + diffuse) + specular;
 }
