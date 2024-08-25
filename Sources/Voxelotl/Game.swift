@@ -26,9 +26,11 @@ class Game: GameDelegate {
   var projection: matrix_float4x4 = .identity
   var chunk = Chunk(position: .zero)
 
-  init() {
+  func create(_ renderer: Renderer) {
     self.resetPlayer()
     self.generateWorld()
+
+    renderer.clearColor = Color<Double>.black.mix(.white, 0.1).linear
   }
 
   private func resetPlayer() {
@@ -103,6 +105,15 @@ class Game: GameDelegate {
   func draw(_ renderer: Renderer, _ time: GameTime) {
     let totalTime = Float(time.total.asFloat)
 
+    let env = Environment(
+      cullFace: .back,
+      lightDirection: .init(0.75, -1, 0.5))
+    let material = Material(
+      ambient:  Color(rgba8888: 0x4F4F4F00).linear,
+      diffuse:  Color(rgba8888: 0xDFDFDF00).linear,
+      specular: Color(rgba8888: 0x2F2F2F00).linear,
+      gloss: 75)
+
     var instances = chunk.compactMap { block, position in
       if case let .solid(color) = block.type {
         Instance(
@@ -121,7 +132,7 @@ class Game: GameDelegate {
           .init(angle: totalTime * 0.7, axis: .init(0, 0, 1)),
         color:    .init(r: 0.5, g: 0.5, b: 1).linear))
     if !instances.isEmpty {
-      renderer.batch(instances: instances, camera: self.camera)
+      renderer.batch(instances: instances, material: material, environment: env, camera: self.camera)
     }
   }
 

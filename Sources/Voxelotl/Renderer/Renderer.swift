@@ -5,30 +5,30 @@ import simd
 import ShaderTypes
 
 fileprivate let cubeVertices: [ShaderVertex] = [
-  .init(position: .init(-1, -1,  1, 1), normal: .init( 0,  0,  1,  0), texCoord: .init(0, 0)),
-  .init(position: .init( 1, -1,  1, 1), normal: .init( 0,  0,  1,  0), texCoord: .init(1, 0)),
-  .init(position: .init(-1,  1,  1, 1), normal: .init( 0,  0,  1,  0), texCoord: .init(0, 1)),
-  .init(position: .init( 1,  1,  1, 1), normal: .init( 0,  0,  1,  0), texCoord: .init(1, 1)),
-  .init(position: .init( 1, -1,  1, 1), normal: .init( 1,  0,  0,  0), texCoord: .init(0, 0)),
-  .init(position: .init( 1, -1, -1, 1), normal: .init( 1,  0,  0,  0), texCoord: .init(1, 0)),
-  .init(position: .init( 1,  1,  1, 1), normal: .init( 1,  0,  0,  0), texCoord: .init(0, 1)),
-  .init(position: .init( 1,  1, -1, 1), normal: .init( 1,  0,  0,  0), texCoord: .init(1, 1)),
-  .init(position: .init( 1, -1, -1, 1), normal: .init( 0,  0, -1,  0), texCoord: .init(0, 0)),
-  .init(position: .init(-1, -1, -1, 1), normal: .init( 0,  0, -1,  0), texCoord: .init(1, 0)),
-  .init(position: .init( 1,  1, -1, 1), normal: .init( 0,  0, -1,  0), texCoord: .init(0, 1)),
-  .init(position: .init(-1,  1, -1, 1), normal: .init( 0,  0, -1,  0), texCoord: .init(1, 1)),
-  .init(position: .init(-1, -1, -1, 1), normal: .init(-1,  0,  0,  0), texCoord: .init(0, 0)),
-  .init(position: .init(-1, -1,  1, 1), normal: .init(-1,  0,  0,  0), texCoord: .init(1, 0)),
-  .init(position: .init(-1,  1, -1, 1), normal: .init(-1,  0,  0,  0), texCoord: .init(0, 1)),
-  .init(position: .init(-1,  1,  1, 1), normal: .init(-1,  0,  0,  0), texCoord: .init(1, 1)),
-  .init(position: .init(-1, -1, -1, 1), normal: .init( 0, -1,  0,  0), texCoord: .init(0, 0)),
-  .init(position: .init( 1, -1, -1, 1), normal: .init( 0, -1,  0,  0), texCoord: .init(1, 0)),
-  .init(position: .init(-1, -1,  1, 1), normal: .init( 0, -1,  0,  0), texCoord: .init(0, 1)),
-  .init(position: .init( 1, -1,  1, 1), normal: .init( 0, -1,  0,  0), texCoord: .init(1, 1)),
-  .init(position: .init(-1,  1,  1, 1), normal: .init( 0,  1,  0,  0), texCoord: .init(0, 0)),
-  .init(position: .init( 1,  1,  1, 1), normal: .init( 0,  1,  0,  0), texCoord: .init(1, 0)),
-  .init(position: .init(-1,  1, -1, 1), normal: .init( 0,  1,  0,  0), texCoord: .init(0, 1)),
-  .init(position: .init( 1,  1, -1, 1), normal: .init( 0,  1,  0,  0), texCoord: .init(1, 1)),
+  .init(position: .init(-1, -1,  1, 1), normal: .init(.back,    0), texCoord: .init(0, 0)),
+  .init(position: .init( 1, -1,  1, 1), normal: .init(.back,    0), texCoord: .init(1, 0)),
+  .init(position: .init(-1,  1,  1, 1), normal: .init(.back,    0), texCoord: .init(0, 1)),
+  .init(position: .init( 1,  1,  1, 1), normal: .init(.back,    0), texCoord: .init(1, 1)),
+  .init(position: .init( 1, -1,  1, 1), normal: .init(.right,   0), texCoord: .init(0, 0)),
+  .init(position: .init( 1, -1, -1, 1), normal: .init(.right,   0), texCoord: .init(1, 0)),
+  .init(position: .init( 1,  1,  1, 1), normal: .init(.right,   0), texCoord: .init(0, 1)),
+  .init(position: .init( 1,  1, -1, 1), normal: .init(.right,   0), texCoord: .init(1, 1)),
+  .init(position: .init( 1, -1, -1, 1), normal: .init(.forward, 0), texCoord: .init(0, 0)),
+  .init(position: .init(-1, -1, -1, 1), normal: .init(.forward, 0), texCoord: .init(1, 0)),
+  .init(position: .init( 1,  1, -1, 1), normal: .init(.forward, 0), texCoord: .init(0, 1)),
+  .init(position: .init(-1,  1, -1, 1), normal: .init(.forward, 0), texCoord: .init(1, 1)),
+  .init(position: .init(-1, -1, -1, 1), normal: .init(.left,    0), texCoord: .init(0, 0)),
+  .init(position: .init(-1, -1,  1, 1), normal: .init(.left,    0), texCoord: .init(1, 0)),
+  .init(position: .init(-1,  1, -1, 1), normal: .init(.left,    0), texCoord: .init(0, 1)),
+  .init(position: .init(-1,  1,  1, 1), normal: .init(.left,    0), texCoord: .init(1, 1)),
+  .init(position: .init(-1, -1, -1, 1), normal: .init(.down,    0), texCoord: .init(0, 0)),
+  .init(position: .init( 1, -1, -1, 1), normal: .init(.down,    0), texCoord: .init(1, 0)),
+  .init(position: .init(-1, -1,  1, 1), normal: .init(.down,    0), texCoord: .init(0, 1)),
+  .init(position: .init( 1, -1,  1, 1), normal: .init(.down,    0), texCoord: .init(1, 1)),
+  .init(position: .init(-1,  1,  1, 1), normal: .init(.up,      0), texCoord: .init(0, 0)),
+  .init(position: .init( 1,  1,  1, 1), normal: .init(.up,      0), texCoord: .init(1, 0)),
+  .init(position: .init(-1,  1, -1, 1), normal: .init(.up,      0), texCoord: .init(0, 1)),
+  .init(position: .init( 1,  1, -1, 1), normal: .init(.up,      0), texCoord: .init(1, 1)),
 ]
 
 fileprivate let cubeIndices: [UInt16] = [
@@ -43,12 +43,12 @@ fileprivate let cubeIndices: [UInt16] = [
 fileprivate let numFramesInFlight: Int = 3
 fileprivate let colorFormat: MTLPixelFormat = .bgra8Unorm_srgb
 fileprivate let depthFormat: MTLPixelFormat = .depth32Float
-fileprivate let clearColor: Color<Double> = .black.mix(.white, 0.1).linear
 
 public class Renderer {
   private var device: MTLDevice
   private var layer: CAMetalLayer
   private var backBufferSize: Size<Int>
+  private var _clearColor: Color<Double>
   private var _aspectRatio: Float
   private var queue: MTLCommandQueue
   private var lib: MTLLibrary
@@ -70,6 +70,10 @@ public class Renderer {
 
   var frame: Rect<Int> { .init(origin: .zero, size: self.backBufferSize) }
   var aspectRatio: Float { self._aspectRatio }
+  var clearColor: Color<Double> {
+    get { self._clearColor }
+    set { self._clearColor = newValue }
+  }
 
   fileprivate static func createMetalDevice() -> MTLDevice? {
     MTLCopyAllDevices().reduce(nil, { best, dev in
@@ -100,10 +104,10 @@ public class Renderer {
 
     self.backBufferSize = size
     self._aspectRatio = Float(self.backBufferSize.w) / Float(self.backBufferSize.w)
+    self._clearColor = .black
 
     passDescription.colorAttachments[0].loadAction  = .clear
     passDescription.colorAttachments[0].storeAction = .store
-    passDescription.colorAttachments[0].clearColor  = MTLClearColor(clearColor)
     passDescription.depthAttachment.loadAction  = .clear
     passDescription.depthAttachment.storeAction = .dontCare
     passDescription.depthAttachment.clearDepth  = 1.0
@@ -302,6 +306,7 @@ public class Renderer {
         throw RendererError.drawFailure("Failed to get next drawable render target")
       }
 
+      passDescription.colorAttachments[0].clearColor  = MTLClearColor(self._clearColor)
       passDescription.colorAttachments[0].texture = rt.texture
       passDescription.depthAttachment.texture = self.depthTextures[self.currentFrame]
 
@@ -319,7 +324,6 @@ public class Renderer {
         throw RendererError.drawFailure("Failed to make render encoder from command buffer")
       }
 
-      encoder.setCullMode(.back)
       encoder.setFrontFacing(.counterClockwise)  // OpenGL default
       encoder.setViewport(Self.makeViewport(rect: self.frame))
       encoder.setRenderPipelineState(pso)
@@ -342,17 +346,17 @@ public class Renderer {
     }
   }
 
-  func batch(instances: [Instance], camera: Camera) {
+  func batch(instances: [Instance], material: Material, environment: Environment, camera: Camera) {
     assert(self._encoder != nil, "batch can't be called outside of a frame being rendered")
 
     var vertUniforms = VertexShaderUniforms(projView: camera.viewProjection)
     var fragUniforms = FragmentShaderUniforms(
       cameraPosition: camera.position,
-      directionalLight: normalize(.init(0.75, -1, 0.5)),
-      ambientColor:  SIMD4(Color(rgba8888: 0x1F1F1F00).linear),
-      diffuseColor:  SIMD4(Color(rgba8888: 0xEFEFEF00).linear),
-      specularColor: SIMD4(Color(rgba8888: 0x7F7F7F00).linear),
-      specularIntensity: 50)
+      directionalLight: normalize(environment.lightDirection),
+      ambientColor:  SIMD4(Color<Float>(material.ambient)),
+      diffuseColor:  SIMD4(Color<Float>(material.diffuse)),
+      specularColor: SIMD4(Color<Float>(material.specular)),
+      specularIntensity: material.gloss)
 
     let numInstances = instances.count
     let instancesBytes = numInstances * MemoryLayout<VertexShaderInstance>.stride
@@ -385,6 +389,8 @@ public class Renderer {
     }
     instanceBuffer.didModifyRange(0..<instancesBytes)
 
+    self._encoder.setCullMode(.init(environment.cullFace))
+
     self._encoder.setVertexBuffer(instanceBuffer,
       offset: 0,
       index: VertexShaderInputIdx.instance.rawValue)
@@ -409,6 +415,16 @@ public class Renderer {
 extension MTLClearColor {
   init(_ color: Color<Double>) {
     self.init(red: color.r, green: color.g, blue: color.b, alpha: color.a)
+  }
+}
+
+fileprivate extension MTLCullMode {
+  init(_ face: Environment.Face) {
+    self = switch face {
+    case .none: .none
+    case .front: .front
+    case .back: .back
+    }
   }
 }
 

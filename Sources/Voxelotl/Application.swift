@@ -57,6 +57,8 @@ public class Application {
       printErr("Renderer init error: unexpected error")
     }
 
+    self.del.create(renderer!)
+
     lastCounter = SDL_GetPerformanceCounter()
     return .running
   }

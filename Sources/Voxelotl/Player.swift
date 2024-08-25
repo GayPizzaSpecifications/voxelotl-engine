@@ -203,7 +203,7 @@ struct Player {
       chunk: chunk,
       origin: self.eyePosition,
       direction: .forward * simd_matrix3x3(self.eyeRotation),
-      maxDistance: 3.666
+      maxDistance: 3.8
     ) {
       self.rayhitPos = hit.position
       if destroy {
