@@ -37,6 +37,7 @@ public class Mouse {
 
   private var _window: OpaquePointer!
   private var _captured: Bool = false
+  private var _dpiScale: SIMD2<Float> = .one
   private var _abs: SIMD2<Float> = .zero, _delta: SIMD2<Float> = .zero
   private var _btns: Buttons = [], _btnImpulse: Buttons = []
 
@@ -48,7 +49,9 @@ public class Mouse {
     }
   }
 
-  private func getAbsolute() -> SIMD2<Float> { self._abs }
+  internal func setDPI(scale: SIMD2<Float>) { self._dpiScale = scale }
+
+  private func getAbsolute() -> SIMD2<Float> { self._abs * self._dpiScale }
   private func getDelta() -> SIMD2<Float> { self._delta }
 
   internal func buttonEvent(btn: UInt32, state: UInt8) {

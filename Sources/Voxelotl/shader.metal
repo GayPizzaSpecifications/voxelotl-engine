@@ -18,13 +18,13 @@ vertex FragmentInput vertexMain(
   constant VertexShaderUniforms& u [[buffer(VertexShaderInputIdxUniforms)]]
 ) {
   auto position = vtx[vertexID].position;
-  auto world = i[instanceID].model * position;
+  auto world = i[instanceID].model * float4(position, 1);
 
   FragmentInput out;
   out.position = u.projView * world;
   out.world    = world.xyz;
   out.color    = half4(i[instanceID].color);
-  out.normal   = (i[instanceID].normalModel * vtx[vertexID].normal).xyz;
+  out.normal   = (i[instanceID].normalModel * float4(vtx[vertexID].normal, 0)).xyz;
   out.texCoord = vtx[vertexID].texCoord;
   return out;
 }

@@ -17,6 +17,7 @@ struct Player {
   static let flySpeedCoeff: Float = 36
   static let jumpVelocity: Float = 7
   static let maxVelocity: Float = 160
+  static let blockReach: Float = 3.8
 
   private var _position = SIMD3<Float>.zero
   private var _velocity = SIMD3<Float>.zero
@@ -24,8 +25,9 @@ struct Player {
 
   private var _onGround: Bool = false
   private var _shouldJump: Optional<Float> = .none
+  private var _useMouseDir: Bool = false
 
-  public var rayhitPos = SIMD3<Float>.zero
+  public var rayhitPos: Optional<SIMD3<Float>> = nil
   private var prevLeftTrigger: Float = 0, prevRightTrigger: Float = 0
 
   public var position: SIMD3<Float> { get { self._position } set { self._position = newValue } }
@@ -40,7 +42,7 @@ struct Player {
 
   enum JumpInput { case off, press, held }
 
-  mutating func update(deltaTime: Float, world: World) {
+  mutating func update(deltaTime: Float, world: World, camera: inout Camera) {
     var turning: SIMD2<Float> = .zero
     var movement: SIMD2<Float> = .zero
     var flying: Int = .zero
@@ -49,7 +51,11 @@ struct Player {
 
     // Read controller input (if one is plugged in)
     if let pad = GameController.current?.state {
-      turning += pad.rightStick.radialDeadzone(min: 0.1, max: 1)
+      let turn = pad.rightStick.radialDeadzone(min: 0.1, max: 1)
+      if turn != .zero {
+        turning += turn
+        self._useMouseDir = false
+      }
       movement = pad.leftStick.cardinalDeadzone(min: 0.1, max: 1)
       flying += (pad.down(.rightBumper) ? 1 : 0) - (pad.down(.leftBumper) ? 1 : 0)
       if pad.pressed(.east) {
@@ -86,6 +92,9 @@ struct Player {
     if Mouse.pressed(.right) { place   = true }
     if Mouse.capture {
       self._rotation += Mouse.relative / 2048 * Float.pi
+      self._useMouseDir = false
+    } else if simd_length_squared(Mouse.relative) > Float.ulpOfOne {
+      self._useMouseDir = true
     }
 
     // Turning input
@@ -121,10 +130,10 @@ struct Player {
     if movementMagnitude > 1.0 {
       movement /= movementMagnitude
     }
-    let rotc = cos(self._rotation.x), rots = sin(self._rotation.x)
+    let right = SIMD2(cos(self._rotation.x), sin(self._rotation.x))
+    let forward = SIMD2(-right.y, right.x)
     let coeff = self._onGround ? Self.accelerationCoeff : Self.airAccelCoeff
-    self._velocity.x += (movement.x * rotc - movement.y * rots) * coeff * deltaTime
-    self._velocity.z += (movement.y * rotc + movement.x * rots) * coeff * deltaTime
+    self._velocity.xz += (right * movement.x + forward * movement.y) * coeff * deltaTime
 
     // Flying and unflying
     self._velocity.y += Float(flying).clamp(-1, 1) * Self.flySpeedCoeff * deltaTime
@@ -198,25 +207,36 @@ struct Player {
       self._velocity.z = 0
     }
 
+    // Update camera
+    camera.position = self.eyePosition
+    camera.rotation = self.eyeRotation
+
     // Block picking
-    if let hit = raycast(
-      world: world,
-      origin: self.eyePosition,
-      direction: .forward * simd_matrix3x3(self.eyeRotation),
-      maxDistance: 3.8
-    ) {
-      self.rayhitPos = hit.position
-      if destroy {
-        world.setBlock(at: hit.map, type: .air)
-      } else if place {
-        world.setBlock(at: hit.map.offset(by: hit.side), type: .solid(.white))
+    let dir = !Mouse.capture && self._useMouseDir
+      ? camera.screenRay(Mouse.position)
+      : self.eyeRotation * .forward
+    if let hit = raycast(world: world, origin: self.eyePosition, direction: dir, maxDistance: Self.blockReach) {
+      if destroy || place {
+        if destroy {
+          world.setBlock(at: hit.map, type: .air)
+        } else {
+          world.setBlock(at: hit.map.offset(by: hit.side), type: .solid(.white))
+        }
+        if let hit = raycast(world: world, origin: self.eyePosition, direction: dir, maxDistance: Self.blockReach) {
+          self.rayhitPos = hit.position
+        } else {
+          self.rayhitPos = nil
+        }
+      } else {
+        self.rayhitPos = hit.position
       }
+    } else {
+      self.rayhitPos = nil
     }
 
     // Ground friction
     if self._onGround {
-      self._velocity.x /= 1.0 + Self.frictionCoeff * deltaTime
-      self._velocity.z /= 1.0 + Self.frictionCoeff * deltaTime
+      self._velocity.xz /= 1.0 + Self.frictionCoeff * deltaTime
     }
 
     // Limit maximum velocity

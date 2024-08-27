@@ -88,6 +88,19 @@ public extension simd_float4x4 {
       .init(0, 0, z, -1),
       .init(0, 0, w,  0))
   }
+
+  func project(_ v: SIMD3<Float>) -> SIMD3<Float> {
+    let t = self.transpose, v = SIMD4(v, 1)
+    return .init(simd_dot(v, t.columns.0), simd_dot(v, t.columns.1), simd_dot(v, t.columns.2))
+      * (1 / simd_dot(v, t.columns.3))
+  }
+
+  static func * (lhs: Self, rhs: SIMD3<Float>) -> SIMD3<Float> {
+    .init(
+      simd_dot(lhs.columns.0.xyz, rhs),
+      simd_dot(lhs.columns.1.xyz, rhs),
+      simd_dot(lhs.columns.2.xyz, rhs))
+  }
 }
 
 extension simd_quatf {

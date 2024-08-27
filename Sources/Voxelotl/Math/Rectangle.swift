@@ -43,12 +43,32 @@ public struct Size<T: AdditiveArithmetic>: Equatable {
 extension Size where T: BinaryInteger {
   static var one: Self { .init(T(1), T(1)) }
 
-  init<O>(_ other: Size<O>) where O: BinaryInteger {
+  init<O: BinaryInteger>(_ other: Size<O>) {
+    self.init(T(other.w), T(other.h))
+  }
+  init<O: BinaryFloatingPoint>(_ other: Size<O>) {
     self.init(T(other.w), T(other.h))
   }
 }
 
-struct Rect<T: AdditiveArithmetic>: Equatable {
+extension Size where T: BinaryFloatingPoint {
+  init<O: BinaryInteger>(_ other: Size<O>) {
+    self.init(T(other.w), T(other.h))
+  }
+  init<O: BinaryFloatingPoint>(_ other: Size<O>) {
+    self.init(T(other.w), T(other.h))
+  }
+
+  @inline(__always) public static func / (lhs: Self, rhs: Self) -> Self { .init(lhs.w / rhs.w, lhs.h / rhs.h) }
+}
+
+extension SIMD2 where Scalar: AdditiveArithmetic {
+  init(_ size: Size<Scalar>) {
+    self.init(size.w, size.h)
+  }
+}
+
+public struct Rect<T: AdditiveArithmetic>: Equatable {
   var x: T, y: T, w: T, h: T
 
   var origin: Point<T> {
@@ -76,12 +96,12 @@ struct Rect<T: AdditiveArithmetic>: Equatable {
     self.h = size.h
   }
 
-  @inline(__always) static func == (lhs: Self, rhs: Self) -> Bool {
+  @inline(__always) public static func == (lhs: Self, rhs: Self) -> Bool {
     lhs.x == rhs.x && lhs.y == rhs.y && lhs.w == rhs.w && lhs.h == rhs.h
   }
 }
 
-extension Rect where T: AdditiveArithmetic {
+public extension Rect where T: AdditiveArithmetic {
   var left: T { x }
   var right: T { x + w }
   var up: T { y }

@@ -6,31 +6,22 @@ public func raycast(
   direction: SIMD3<Float>,
   maxDistance: Float
 ) -> Optional<RaycastHit> {
-  let deltaDistance = abs(SIMD3(repeating: simd_length(direction)) / direction)
+  let directionLen = simd_length(direction)
+  let deltaDistance = SIMD3(direction.indices.map {
+    direction[$0] != 0.0 ? abs(directionLen / direction[$0]) : Float.greatestFiniteMagnitude
+  })
 
   var mapPosition = SIMD3<Int>(floor(rayPosition))
   var sideDistance: SIMD3<Float> = .zero
   var step: SIMD3<Int> = .zero
-  if direction.x < 0 {
-    step.x = -1
-    sideDistance.x = (rayPosition.x - Float(mapPosition.x)) * deltaDistance.x
-  } else {
-    step.x = 1
-    sideDistance.x = (Float(mapPosition.x) + 1 - rayPosition.x) * deltaDistance.x
-  }
-  if direction.y < 0 {
-    step.y = -1
-    sideDistance.y = (rayPosition.y - Float(mapPosition.y)) * deltaDistance.y
-  } else {
-    step.y = 1
-    sideDistance.y = (Float(mapPosition.y) + 1 - rayPosition.y) * deltaDistance.y
-  }
-  if direction.z < 0 {
-    step.z = -1
-    sideDistance.z = (rayPosition.z - Float(mapPosition.z)) * deltaDistance.z
-  } else {
-    step.z = 1
-    sideDistance.z = (Float(mapPosition.z) + 1 - rayPosition.z) * deltaDistance.z
+  for i in 0..<3 {
+    if direction[i] < 0 {
+      step[i] = -1
+      sideDistance[i] = (rayPosition[i] - Float(mapPosition[i])) * deltaDistance[i]
+    } else {
+      step[i] = 1
+      sideDistance[i] = (Float(mapPosition[i]) + 1 - rayPosition[i]) * deltaDistance[i]
+    }
   }
 
   // Run digital differential analysis (3DDDA)
@@ -59,24 +50,23 @@ public func raycast(
     }
 
     // Compute distance
-    var distance: Float = if side.isX {
-      abs(Float(mapPosition.x) - rayPosition.x + Float(1 - step.x) / 2) / direction.x
+    let distance: Float = if side.isX {
+      abs(Float(mapPosition.x) - rayPosition.x + Float(1 - step.x) * 0.5) * deltaDistance.x
     } else if side.isVertical {
-      abs(Float(mapPosition.y) - rayPosition.y + Float(1 - step.y) / 2) / direction.y
+      abs(Float(mapPosition.y) - rayPosition.y + Float(1 - step.y) * 0.5) * deltaDistance.y
     } else {
-      abs(Float(mapPosition.z) - rayPosition.z + Float(1 - step.z) / 2) / direction.z
+      abs(Float(mapPosition.z) - rayPosition.z + Float(1 - step.z) * 0.5) * deltaDistance.z
     }
-    distance = abs(distance)
 
     // Bail out if we've exeeded the max raycast distance
     if distance > maxDistance {
       return nil
     }
 
-    // return a result if we hit something solid
+    // Return a result if we hit something solid
     if world.getBlock(at: mapPosition).type != .air {
       return .init(
-        position: rayPosition + direction * distance,
+        position: rayPosition + direction / directionLen * distance,
         distance: distance,
         map: mapPosition,
         side: side)

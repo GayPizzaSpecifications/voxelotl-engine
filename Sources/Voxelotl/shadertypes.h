@@ -24,8 +24,8 @@ typedef NS_ENUM(NSInteger, VertexShaderInputIdx) {
 };
 
 typedef struct {
-  vector_float4 position;
-  vector_float4 normal;
+  vector_float3 position;
+  vector_float3 normal;
   vector_float2 texCoord;
 } ShaderVertex;
 

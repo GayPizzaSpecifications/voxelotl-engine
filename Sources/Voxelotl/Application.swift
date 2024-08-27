@@ -38,11 +38,16 @@ public class Application {
     }
 
     // Get window metrics
-    var backBuffer = Size<Int32>.zero
+    var backBuffer = Size<Int32>.zero, windowSize = Size<Int32>.zero
     guard SDL_GetWindowSizeInPixels(window, &backBuffer.w, &backBuffer.h) >= 0 else {
       printErr("SDL_GetWindowSizeInPixels() error: \(String(cString: SDL_GetError()))")
       return .exitFailure
     }
+    guard SDL_GetWindowSize(window, &windowSize.w, &windowSize.h) >= 0 else {
+      printErr("SDL_GetWindowSize() error: \(String(cString: SDL_GetError()))")
+      return .exitFailure
+    }
+    Mouse.instance.setDPI(scale: SIMD2(Size<Float>(backBuffer) / Size<Float>(windowSize)))
 
     // Create Metal renderer
     view = SDL_Metal_CreateView(window)

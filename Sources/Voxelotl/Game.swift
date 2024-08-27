@@ -34,7 +34,7 @@ class Game: GameDelegate {
   }
 
   private func resetPlayer() {
-    self.player.position = .init(repeating: 0.5) + .init(0, Float(Chunk.size), 0)
+    self.player.position = .init(repeating: 0.5) + .up * Float(Chunk.size)
     self.player.velocity = .zero
     self.player.rotation = .init(.pi, 0)
   }
@@ -47,13 +47,13 @@ class Game: GameDelegate {
     random = Xoroshiro128PlusPlus(seed: newSeed)
 #else
     random = PCG32Random(state: (
-        UInt64(Arc4Random.instance.next()) | UInt64(Arc4Random.instance.next()) << 32,
-        UInt64(Arc4Random.instance.next()) | UInt64(Arc4Random.instance.next()) << 32))
+      UInt64(Arc4Random.instance.next()) | UInt64(Arc4Random.instance.next()) << 32,
+      UInt64(Arc4Random.instance.next()) | UInt64(Arc4Random.instance.next()) << 32))
 #endif
 #if DEBUG
-      self.world.generate(width: 2, height: 1, depth: 1, random: &random)
+    self.world.generate(width: 2, height: 1, depth: 1, random: &random)
 #else
-      self.world.generate(width: 5, height: 3, depth: 5, random: &random)
+    self.world.generate(width: 5, height: 3, depth: 5, random: &random)
 #endif
   }
 
@@ -85,9 +85,7 @@ class Game: GameDelegate {
       self.generateWorld()
     }
 
-    self.player.update(deltaTime: deltaTime, world: world)
-    self.camera.position = player.eyePosition
-    self.camera.rotation = player.eyeRotation
+    self.player.update(deltaTime: deltaTime, world: world, camera: &camera)
   }
 
   func draw(_ renderer: Renderer, _ time: GameTime) {
@@ -103,21 +101,23 @@ class Game: GameDelegate {
       gloss: 75)
 
     var instances = world.instances
-    instances.append(
-      Instance(
-        position: player.rayhitPos,
-        scale:    .init(repeating: 0.0725 * 0.5),
-        rotation:
-          .init(angle: totalTime * 3.0, axis: .init(0, 1, 0)) *
-          .init(angle: totalTime * 1.5, axis: .init(1, 0, 0)) *
-          .init(angle: totalTime * 0.7, axis: .init(0, 0, 1)),
-        color:    .init(r: 0.5, g: 0.5, b: 1).linear))
+    if let position = player.rayhitPos {
+      instances.append(
+        Instance(
+          position: position,
+          scale:    .init(repeating: 0.0725 * 0.5),
+          rotation:
+            .init(angle: totalTime * 3.0, axis: .init(0, 1, 0)) *
+            .init(angle: totalTime * 1.5, axis: .init(1, 0, 0)) *
+            .init(angle: totalTime * 0.7, axis: .init(0, 0, 1)),
+          color:    .init(r: 0.5, g: 0.5, b: 1).linear))
+    }
     if !instances.isEmpty {
       renderer.batch(instances: instances, material: material, environment: env, camera: self.camera)
     }
   }
 
   func resize(_ size: Size<Int>) {
-    self.camera.setSize(size)
+    self.camera.size = size
   }
 }
