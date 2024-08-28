@@ -11,7 +11,10 @@ add_executable(Voxelotl MACOSX_BUNDLE
   Math/FloatExtensions.swift
   Math/VectorExtensions.swift
   Math/Matrix4x4.swift
+  Math/Point.swift
+  Math/Size.swift
   Math/Rectangle.swift
+  Math/Extent.swift
   Math/AABB.swift
 
   # Random number generator subsystem
