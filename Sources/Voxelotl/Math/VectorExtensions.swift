@@ -1,7 +1,11 @@
 import simd
 
-extension SIMD3 {
-  var xy: SIMD2<Scalar> {
+public extension SIMD2 where Scalar: Numeric & AdditiveArithmetic {
+  @inline(__always) func dot(_ b: Self) -> Scalar { self.x * b.x + self.y * b.y }
+}
+
+public extension SIMD3 {
+  @inline(__always) var xy: SIMD2<Scalar> {
     get { .init(self.x, self.y) }
     set {
       self.x = newValue.x
@@ -9,7 +13,7 @@ extension SIMD3 {
     }
   }
 
-  var xz: SIMD2<Scalar> {
+  @inline(__always) var xz: SIMD2<Scalar> {
     get { .init(self.x, self.z) }
     set {
       self.x = newValue.x
@@ -18,7 +22,7 @@ extension SIMD3 {
   }
 }
 
-extension SIMD3 where Scalar: FloatingPoint {
+public extension SIMD3 where Scalar: FloatingPoint {
   @inline(__always) static var X: Self      { Self(1, 0, 0) }
   @inline(__always) static var Y: Self      { Self(0, 1, 0) }
   @inline(__always) static var Z: Self      { Self(0, 0, 1) }
@@ -29,6 +33,10 @@ extension SIMD3 where Scalar: FloatingPoint {
   @inline(__always) static var right: Self   {  X }
   @inline(__always) static var forward: Self { -Z }
   @inline(__always) static var back: Self    {  Z }
+}
+
+public extension SIMD3 where Scalar: Numeric & AdditiveArithmetic {
+  @inline(__always) func dot(_ b: Self) -> Scalar { self.x * b.x + self.y * b.y + self.z * b.z }
 }
 
 extension SIMD3 where Scalar == Float {
@@ -51,8 +59,8 @@ extension SIMD3 where Scalar == Float {
   }
 }
 
-extension SIMD4 {
-  var xy: SIMD2<Scalar> {
+public extension SIMD4 {
+  @inline(__always) var xy: SIMD2<Scalar> {
     get { .init(self.x, self.y) }
     set {
       self.x = newValue.x
@@ -60,7 +68,7 @@ extension SIMD4 {
     }
   }
 
-  var xyz: SIMD3<Scalar> {
+  @inline(__always) var xyz: SIMD3<Scalar> {
     get { .init(self.x, self.y, self.z) }
     set {
       self.x = newValue.x
@@ -68,4 +76,8 @@ extension SIMD4 {
       self.z = newValue.z
     }
   }
+}
+
+public extension SIMD4 where Scalar: Numeric & AdditiveArithmetic {
+  @inline(__always) func dot(_ b: Self) -> Scalar { self.x * b.x + self.y * b.y + self.z * b.z + self.w * b.w }
 }

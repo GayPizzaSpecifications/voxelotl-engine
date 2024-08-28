@@ -1,10 +1,15 @@
 import Foundation
 
-public struct ImprovedPerlin<T: BinaryFloatingPoint & SIMDScalar> {
-  private let p: [Int32]
+public struct ImprovedPerlin<T: BinaryFloatingPoint & SIMDScalar>: CoherentNoise3D {
+  private let p: [Int16]
+
+  public init(permutation: [Int16]) {
+    assert(permutation.count == 0x100)
+    self.p = permutation
+  }
 
   public init(random: inout any RandomProvider) {
-    self.p = (0..<0x100).map { Int32($0) }.shuffled(using: &random)
+    self.p = (0..<0x100).map { Int16($0) }.shuffled(using: &random)
   }
 
   public func get(_ point: SIMD3<T>) -> T {

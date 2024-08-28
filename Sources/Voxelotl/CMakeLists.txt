@@ -23,7 +23,9 @@ add_executable(Voxelotl MACOSX_BUNDLE
   Random/Arc4Random.swift
   Random/PCG32Random.swift
   Random/Xoroshiro128.swift
+  Random/CoherentNoise.swift
   Random/PerlinNoiseGenerator.swift
+  Random/SimplexNoise.swift
   Random/RandomCollectionExtensions.swift
 
   # Resource classes
