@@ -10,4 +10,13 @@ public extension FloatingPoint {
 
   @inline(__always) func smoothStep() -> Self { self * self * (3 - 2 * self) }
   @inline(__always) func smootherStep() -> Self { self * self * self * (self * (self * 6 - 15) + 10) }
+
+  @inline(__always) func euclidianMod(_ divisor: Self) -> Self { self.floorMod(abs(divisor)) }
+  @inline(__always) func floorMod(_ divisor: Self) -> Self {
+    //fmod(fmod(self, divisor) + divisor, divisor)
+    (self.truncateMod(divisor) + divisor).truncateMod(divisor)
+  }
+  @inline(__always) func truncateMod(_ divisor: Self) -> Self {
+    self.truncatingRemainder(dividingBy: divisor)
+  }
 }

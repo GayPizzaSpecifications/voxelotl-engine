@@ -9,6 +9,7 @@ add_executable(Voxelotl MACOSX_BUNDLE
 
   # Maths library
   Math/FloatExtensions.swift
+  Math/IntegerExtensions.swift
   Math/VectorExtensions.swift
   Math/Matrix4x4.swift
   Math/Point.swift

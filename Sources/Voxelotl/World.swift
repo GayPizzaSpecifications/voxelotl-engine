@@ -19,6 +19,7 @@ public class World {
 
   func generate(width: Int, height: Int, depth: Int, random: inout any RandomProvider) {
     let noise = ImprovedPerlin<Float>(random: &random)
+    let noise2 = SimplexNoise<Float>(random: &random)
 
     for x in 0..<width {
       for y in 0..<height {
@@ -30,12 +31,12 @@ public class World {
             let fpos = SIMD3<Float>(position)
             return if fpos.y / Float(Chunk.size)
                 + noise.get(fpos * 0.05) * 1.1
-                + noise.get(fpos * 0.1 + 500) * 0.5
-                + noise.get(fpos * 0.3 + 100) * 0.23 < 0.6 {
+                + noise.get(fpos * 0.10) * 0.5
+                + noise.get(fpos * 0.30) * 0.23 < 0.6 {
               .solid(.init(
-                r: Float16(noise.get(fpos * 0.1)),
-                g: Float16(noise.get(fpos * 0.1 + 10)),
-                b: Float16(noise.get(fpos * 0.1 + 100))).mix(.white, 0.6).linear)
+                hue:        Float16(180 + noise2.get(fpos * 0.05) * 180),
+                saturation: Float16(0.5 + noise2.get(SIMD4(fpos * 0.05, 4)) * 0.5),
+                value:      Float16(0.5 + noise2.get(SIMD4(fpos * 0.05, 9)) * 0.5).lerp(0.5, 1)).linear)
             } else {
               .air
             }

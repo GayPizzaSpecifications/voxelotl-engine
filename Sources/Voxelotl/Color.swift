@@ -161,3 +161,37 @@ public extension SIMD4 {
     self = other.values
   }
 }
+
+public extension Color where T: FloatingPoint {
+  init(hue: T, saturation: T, value: T) {
+    if saturation == 0 {
+      self.init(r: value, g: value, b: value, a: 1)
+    } else {
+      let hue = hue.floorMod(360)
+
+      let rescale: T = 1 / 60
+      let interp = (hue - floor(hue * rescale) * 60) * rescale
+      let invInterp = (1 - interp)
+
+      let base = 1 - saturation
+
+      let dark = base * value
+      let rise = value * interp + dark * invInterp
+      let fall = dark * interp + value * invInterp
+
+      if hue < 60 {
+        self.init(r: value, g: rise, b: dark, a: 1)
+      } else if hue < 120 {
+        self.init(r: fall, g: value, b: dark, a: 1)
+      } else if hue < 180 {
+        self.init(r: dark, g: value, b: rise, a: 1)
+      } else if hue < 240 {
+        self.init(r: dark, g: fall, b: value, a: 1)
+      } else if hue < 300 {
+        self.init(r: rise, g: dark, b: value, a: 1)
+      } else {
+        self.init(r: value, g: dark, b: fall, a: 1)
+      }
+    }
+  }
+}
