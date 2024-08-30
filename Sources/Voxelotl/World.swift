@@ -2,6 +2,8 @@ import Foundation
 
 public class World {
   private var _chunks: Dictionary<SIMD3<Int>, Chunk>
+  private var noise: ImprovedPerlin<Float>!
+  private var noise2: SimplexNoise<Float>!
 
   public init() {
     self._chunks = [:]
@@ -18,33 +20,39 @@ public class World {
   }
 
   func generate(width: Int, height: Int, depth: Int, random: inout any RandomProvider) {
-    let noise = ImprovedPerlin<Float>(random: &random)
-    let noise2 = SimplexNoise<Float>(random: &random)
+    self.noise = ImprovedPerlin<Float>(random: &random)
+    self.noise2 = SimplexNoise<Float>(random: &random)
 
     for x in 0..<width {
       for y in 0..<height {
         for z in 0..<depth {
           let chunkID = SIMD3(x, y, z) &- SIMD3(width, height, depth) / 2
-          let chunkOrigin = chunkID &<< Chunk.shift
-          var chunk = Chunk(position: chunkOrigin)
-          chunk.fill(allBy: { position in
-            let fpos = SIMD3<Float>(position)
-            return if fpos.y / Float(Chunk.size)
-                + noise.get(fpos * 0.05) * 1.1
-                + noise.get(fpos * 0.10) * 0.5
-                + noise.get(fpos * 0.30) * 0.23 < 0.6 {
-              .solid(.init(
-                hue:        Float16(180 + noise2.get(fpos * 0.05) * 180),
-                saturation: Float16(0.5 + noise2.get(SIMD4(fpos * 0.05, 4)) * 0.5),
-                value:      Float16(0.5 + noise2.get(SIMD4(fpos * 0.05, 9)) * 0.5).lerp(0.5, 1)).linear)
-            } else {
-              .air
-            }
-          })
-          self._chunks[chunkID] = chunk
+          self.generate(chunkID: chunkID)
         }
       }
     }
+  }
+
+  func generate(chunkID: SIMD3<Int>) {
+    let chunkOrigin = chunkID &<< Chunk.shift
+    var chunk = Chunk(position: chunkOrigin)
+    chunk.fill(allBy: { position in
+      let fpos = SIMD3<Float>(position)
+        let threshold: Float = 0.6
+        let value = fpos.y / Float(Chunk.size)
+          + self.noise.get(fpos * 0.05) * 1.1
+          + self.noise.get(fpos * 0.10) * 0.5
+          + self.noise.get(fpos * 0.30) * 0.23
+      return if value < threshold {
+        .solid(.init(
+          hue:        Float16(180 + self.noise2.get(fpos * 0.05) * 180),
+          saturation: Float16(0.5 + self.noise2.get(SIMD4(fpos * 0.05, 4)) * 0.5),
+          value:      Float16(0.5 + self.noise2.get(SIMD4(fpos * 0.05, 9)) * 0.5).lerp(0.5, 1)).linear)
+      } else {
+        .air
+      }
+    })
+    self._chunks[chunkID] = chunk
   }
 
   var instances: [Instance] {
