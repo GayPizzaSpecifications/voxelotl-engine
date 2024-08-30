@@ -40,20 +40,12 @@ class Game: GameDelegate {
   }
 
   private func generateWorld() {
-    var random: any RandomProvider
-#if true
-    let newSeed = UInt64(Arc4Random.instance.next()) | UInt64(Arc4Random.instance.next()) << 32
-    printErr(newSeed)
-    random = Xoroshiro128PlusPlus(seed: newSeed)
-#else
-    random = PCG32Random(state: (
-      UInt64(Arc4Random.instance.next()) | UInt64(Arc4Random.instance.next()) << 32,
-      UInt64(Arc4Random.instance.next()) | UInt64(Arc4Random.instance.next()) << 32))
-#endif
+    let seed = UInt64(Arc4Random.instance.next()) | UInt64(Arc4Random.instance.next()) << 32
+    printErr(seed)
 #if DEBUG
-    self.world.generate(width: 2, height: 1, depth: 1, random: &random)
+    self.world.generate(width: 2, height: 1, depth: 1, seed: seed)
 #else
-    self.world.generate(width: 5, height: 3, depth: 5, random: &random)
+    self.world.generate(width: 5, height: 3, depth: 5, seed: seed)
 #endif
   }
 
