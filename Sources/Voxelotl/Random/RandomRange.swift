@@ -65,21 +65,9 @@ public extension RandomProvider where Output: UnsignedInteger {
   }
 
   mutating func nextModless(in bound: Output) -> Output {
-    func pow2MaskFrom(range num: Output) -> Output {
-      if num & (num - 1) == 0 {
-        return num - 1
-      }
-      var result: Output = 1
-      for _ in 0..<Output.bitWidth {
-        if result >= num {
-          return result - 1
-        }
-        result <<= 1
-      }
-      return .max
-    }
+    let shift = bound.leadingZeroBitCount
+    let mask = Output.max &>> shift
 
-    let mask = pow2MaskFrom(range: bound)
     var result: Output
     repeat {
       result = next() & mask
