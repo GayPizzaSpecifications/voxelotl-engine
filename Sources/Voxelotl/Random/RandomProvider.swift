@@ -8,7 +8,7 @@ public protocol RandomProvider {
 }
 
 public protocol RandomSeedable {
-  associatedtype SeedType: FixedWidthInteger
+  associatedtype SeedType
 
   init(seed: SeedType)
   mutating func seed(_ value: SeedType)

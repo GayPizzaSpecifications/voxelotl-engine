@@ -28,6 +28,7 @@ add_executable(Voxelotl MACOSX_BUNDLE
   Random/PerlinNoiseGenerator.swift
   Random/SimplexNoise.swift
   Random/RandomCollectionExtensions.swift
+  Random/SplitMix64.swift
 
   # Resource classes
   NSImageLoader.swift

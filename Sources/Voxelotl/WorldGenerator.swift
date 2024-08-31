@@ -3,13 +3,11 @@ struct WorldGenerator {
 
   public mutating func reset(seed: UInt64) {
     var random: any RandomProvider
+    let initialState = SplitMix64.createState(seed: seed)
 #if true
-    random = Xoroshiro128PlusPlus(seed: seed)
+    random = Xoroshiro128PlusPlus(state: initialState)
 #else
-    //TODO: Fill seed with a hash
-    random = PCG32Random(state: (
-      UInt64(Arc4Random.instance.next()) | UInt64(Arc4Random.instance.next()) << 32,
-      UInt64(Arc4Random.instance.next()) | UInt64(Arc4Random.instance.next()) << 32))
+    random = PCG32Random(seed: initialState)
 #endif
 
     self.noise = ImprovedPerlin<Float>(random: &random)
@@ -36,5 +34,13 @@ struct WorldGenerator {
       }
     })
     return chunk
+  }
+}
+
+fileprivate extension RandomProvider where Output == UInt64, Self: RandomSeedable, SeedType == UInt64 {
+  static func createState(seed value: UInt64) -> (UInt64, UInt64) {
+    var hash = Self(seed: value)
+    let state = (hash.next(), hash.next())
+    return state
   }
 }

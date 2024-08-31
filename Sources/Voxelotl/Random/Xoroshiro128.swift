@@ -1,10 +1,9 @@
-struct Xoroshiro128Plus: RandomProvider, RandomSeedable, RandomStateAccess {
+public struct Xoroshiro128Plus: RandomProvider, RandomStateAccess {
   public typealias Output = UInt64
-  public typealias SeedType = UInt64
   public typealias StateType = (UInt64, UInt64)
 
-  static public var min: UInt64 { .min }
-  static public var max: UInt64 { .max }
+  public static var min: UInt64 { .min }
+  public static var max: UInt64 { .max }
 
   public var state: (UInt64, UInt64)
 
@@ -14,16 +13,6 @@ struct Xoroshiro128Plus: RandomProvider, RandomSeedable, RandomStateAccess {
 
   public init(state: (UInt64, UInt64)) {
     self.state = (state.0, state.1)
-  }
-
-  public init(seed: UInt64) {
-    let s0 = splitMix64(seed: seed)
-    self.init(state: (s0, splitMix64(seed: s0)))
-  }
-
-  public mutating func seed(_ seed: UInt64) {
-    let s0 = splitMix64(seed: seed)
-    self.state = (s0, splitMix64(seed: s0))
   }
 
   public mutating func next() -> UInt64 {
@@ -38,13 +27,12 @@ struct Xoroshiro128Plus: RandomProvider, RandomSeedable, RandomStateAccess {
   }
 }
 
-struct Xoroshiro128PlusPlus: RandomProvider, RandomSeedable, RandomStateAccess {
+public struct Xoroshiro128PlusPlus: RandomProvider, RandomStateAccess {
   public typealias Output = UInt64
-  public typealias SeedType = UInt64
   public typealias StateType = (UInt64, UInt64)
 
-  static public var min: UInt64 { .min }
-  static public var max: UInt64 { .max }
+  public static var min: UInt64 { .min }
+  public static var max: UInt64 { .max }
 
   public var state: (UInt64, UInt64)
 
@@ -54,16 +42,6 @@ struct Xoroshiro128PlusPlus: RandomProvider, RandomSeedable, RandomStateAccess {
 
   public init(state: (UInt64, UInt64)) {
     self.state = (state.0, state.1)
-  }
-
-  public init(seed: UInt64) {
-    let s0 = splitMix64(seed: seed)
-    self.init(state: (s0, splitMix64(seed: s0)))
-  }
-
-  public mutating func seed(_ seed: UInt64) {
-    let s0 = splitMix64(seed: seed)
-    self.state = (s0, splitMix64(seed: s0))
   }
 
   public mutating func next() -> UInt64 {
@@ -78,13 +56,12 @@ struct Xoroshiro128PlusPlus: RandomProvider, RandomSeedable, RandomStateAccess {
   }
 }
 
-struct Xoroshiro128StarStar: RandomProvider, RandomSeedable, RandomStateAccess {
+public struct Xoroshiro128StarStar: RandomProvider, RandomStateAccess {
   public typealias Output = UInt64
-  public typealias SeedType = UInt64
   public typealias StateType = (UInt64, UInt64)
 
-  static public var min: UInt64 { .min }
-  static public var max: UInt64 { .max }
+  public static var min: UInt64 { .min }
+  public static var max: UInt64 { .max }
 
   public var state: (UInt64, UInt64)
 
@@ -94,16 +71,6 @@ struct Xoroshiro128StarStar: RandomProvider, RandomSeedable, RandomStateAccess {
 
   public init(state: (UInt64, UInt64)) {
     self.state = (state.0, state.1)
-  }
-
-  public init(seed: UInt64) {
-    let s0 = splitMix64(seed: seed)
-    self.init(state: (s0, splitMix64(seed: s0)))
-  }
-
-  public mutating func seed(_ seed: UInt64) {
-    let s0 = splitMix64(seed: seed)
-    self.state = (s0, splitMix64(seed: s0))
   }
 
   public mutating func next() -> UInt64 {
@@ -119,14 +86,7 @@ struct Xoroshiro128StarStar: RandomProvider, RandomSeedable, RandomStateAccess {
 }
 
 fileprivate extension UInt64 {
-  func rotate(left count: Int) -> Self {
+  @inline(__always) func rotate(left count: Int) -> Self {
     self &<< count | self &>> (Self.bitWidth &- count)
   }
-}
-
-fileprivate func splitMix64(seed: UInt64) -> UInt64 {
-  var x = seed &+ 0x9E3779B97F4A7C15
-  x = (x ^ x &>> 30) &* 0xBF58476D1CE4E5B9
-  x = (x ^ x &>> 27) &* 0x94D049BB133111EB
-  return x ^ x &>> 31
 }
