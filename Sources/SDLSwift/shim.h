@@ -36,8 +36,10 @@
 #define SDL_WINDOW_HIGH_PIXEL_DENSITY 0x0000000000002000UL    /**< window uses high pixel density back buffer if possible */
 #undef SDL_WINDOW_MOUSE_CAPTURE
 #define SDL_WINDOW_MOUSE_CAPTURE 0x0000000000004000UL    /**< window has mouse captured (unrelated to MOUSE_GRABBED) */
+#undef SDL_WINDOW_MOUSE_RELATIVE_MODE
+#define SDL_WINDOW_MOUSE_RELATIVE_MODE 0x0000000000008000UL    /**< window has relative mode enabled */
 #undef SDL_WINDOW_ALWAYS_ON_TOP
-#define SDL_WINDOW_ALWAYS_ON_TOP 0x0000000000008000UL    /**< window should always be above others */
+#define SDL_WINDOW_ALWAYS_ON_TOP 0x0000000000010000UL    /**< window should always be above others */
 #undef SDL_WINDOW_UTILITY
 #define SDL_WINDOW_UTILITY 0x0000000000020000UL    /**< window should be treated as a utility window, not showing in the task bar and window list */
 #undef SDL_WINDOW_TOOLTIP

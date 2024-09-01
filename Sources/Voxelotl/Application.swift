@@ -18,7 +18,7 @@ public class Application {
   }
 
   private func initialize() -> ApplicationExecutionState {
-    guard SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD) >= 0 else {
+    guard SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD) else {
       printErr("SDL_Init() error: \(String(cString: SDL_GetError()))")
       return .exitFailure
     }
@@ -39,11 +39,11 @@ public class Application {
 
     // Get window metrics
     var backBuffer = Size<Int32>.zero, windowSize = Size<Int32>.zero
-    guard SDL_GetWindowSizeInPixels(window, &backBuffer.w, &backBuffer.h) >= 0 else {
+    guard SDL_GetWindowSizeInPixels(window, &backBuffer.w, &backBuffer.h) else {
       printErr("SDL_GetWindowSizeInPixels() error: \(String(cString: SDL_GetError()))")
       return .exitFailure
     }
-    guard SDL_GetWindowSize(window, &windowSize.w, &windowSize.h) >= 0 else {
+    guard SDL_GetWindowSize(window, &windowSize.w, &windowSize.h) else {
       printErr("SDL_GetWindowSize() error: \(String(cString: SDL_GetError()))")
       return .exitFailure
     }
@@ -100,7 +100,7 @@ public class Application {
       return .running
 
     case SDL_EVENT_GAMEPAD_ADDED:
-      if SDL_IsGamepad(event.gdevice.which) != SDL_FALSE {
+      if SDL_IsGamepad(event.gdevice.which) {
         GameController.instance.connectedEvent(id: event.gdevice.which)
       }
       return .running
@@ -176,7 +176,7 @@ public class Application {
     quit: while res == .running {
       beginHandleEvents()
       var event = SDL_Event()
-      while SDL_PollEvent(&event) > 0 {
+      while SDL_PollEvent(&event) {
         res = handleEvent(event)
         if res != .running {
           break quit

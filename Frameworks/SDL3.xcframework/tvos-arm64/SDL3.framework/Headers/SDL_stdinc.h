@@ -36,6 +36,9 @@
 #include <inttypes.h>
 #endif
 #include <stdarg.h>
+#ifndef __cplusplus
+#include <stdbool.h>
+#endif
 #include <stdint.h>
 #include <string.h>
 #include <wchar.h>
@@ -191,7 +194,7 @@ void *alloca(size_t);
  *
  * \sa SDL_bool
  */
-#define SDL_FALSE 0
+#define SDL_FALSE false
 
 /**
  * A boolean true.
@@ -200,7 +203,7 @@ void *alloca(size_t);
  *
  * \sa SDL_bool
  */
-#define SDL_TRUE 1
+#define SDL_TRUE true
 
 /**
  * A boolean type: true or false.
@@ -210,7 +213,7 @@ void *alloca(size_t);
  * \sa SDL_TRUE
  * \sa SDL_FALSE
  */
-typedef int SDL_bool;
+typedef bool SDL_bool;
 
 /**
  * A signed 8-bit integer type.
@@ -482,6 +485,7 @@ typedef Sint64 SDL_Time;
 
 /** \cond */
 #ifndef DOXYGEN_SHOULD_IGNORE_THIS
+SDL_COMPILE_TIME_ASSERT(bool, sizeof(SDL_bool) == 1);
 SDL_COMPILE_TIME_ASSERT(uint8, sizeof(Uint8) == 1);
 SDL_COMPILE_TIME_ASSERT(sint8, sizeof(Sint8) == 1);
 SDL_COMPILE_TIME_ASSERT(uint16, sizeof(Uint16) == 2);
@@ -595,8 +599,8 @@ extern SDL_DECLSPEC void SDLCALL SDL_GetMemoryFunctions(SDL_malloc_func *malloc_
  * \param calloc_func custom calloc function.
  * \param realloc_func custom realloc function.
  * \param free_func custom free function.
- * \returns 0 on success or a negative error code on failure; call
- *          SDL_GetError() for more information.
+ * \returns SDL_TRUE on success or SDL_FALSE on failure; call SDL_GetError()
+ *          for more information.
  *
  * \threadsafety It is safe to call this function from any thread, but one
  *               should not replace the memory functions once any allocations
@@ -607,10 +611,10 @@ extern SDL_DECLSPEC void SDLCALL SDL_GetMemoryFunctions(SDL_malloc_func *malloc_
  * \sa SDL_GetMemoryFunctions
  * \sa SDL_GetOriginalMemoryFunctions
  */
-extern SDL_DECLSPEC int SDLCALL SDL_SetMemoryFunctions(SDL_malloc_func malloc_func,
-                                                   SDL_calloc_func calloc_func,
-                                                   SDL_realloc_func realloc_func,
-                                                   SDL_free_func free_func);
+extern SDL_DECLSPEC SDL_bool SDLCALL SDL_SetMemoryFunctions(SDL_malloc_func malloc_func,
+                                                            SDL_calloc_func calloc_func,
+                                                            SDL_realloc_func realloc_func,
+                                                            SDL_free_func free_func);
 
 /**
  * Allocate memory aligned to a specific value.
@@ -2899,14 +2903,78 @@ extern SDL_DECLSPEC float SDLCALL SDL_tanf(float x);
 #define SDL_ICONV_EILSEQ    (size_t)-3
 #define SDL_ICONV_EINVAL    (size_t)-4
 
-/* SDL_iconv_* are now always real symbols/types, not macros or inlined. */
 typedef struct SDL_iconv_data_t *SDL_iconv_t;
+
+/**
+ * This function allocates a context for the specified character set
+ * conversion.
+ *
+ * \param tocode The target character encoding, must not be NULL.
+ * \param fromcode The source character encoding, must not be NULL.
+ * \returns a handle that must be freed with SDL_iconv_close, or
+ *          SDL_ICONV_ERROR on failure.
+ *
+ * \since This function is available since SDL 3.0.0.
+ *
+ * \sa SDL_iconv
+ * \sa SDL_iconv_close
+ * \sa SDL_iconv_string
+ */
 extern SDL_DECLSPEC SDL_iconv_t SDLCALL SDL_iconv_open(const char *tocode,
                                                    const char *fromcode);
+
+/**
+ * This function frees a context used for character set conversion.
+ *
+ * \param cd The character set conversion handle.
+ * \returns 0 on success, or -1 on failure.
+ *
+ * \since This function is available since SDL 3.0.0.
+ *
+ * \sa SDL_iconv
+ * \sa SDL_iconv_open
+ * \sa SDL_iconv_string
+ */
 extern SDL_DECLSPEC int SDLCALL SDL_iconv_close(SDL_iconv_t cd);
+
+/**
+ * This function converts text between encodings, reading from and writing to
+ * a buffer.
+ *
+ * It returns the number of succesful conversions.
+ *
+ * \param cd The character set conversion context, created in
+ *           SDL_iconv_open().
+ * \param inbuf Address of variable that points to the first character of the
+ *              input sequence.
+ * \param inbytesleft The number of bytes in the input buffer.
+ * \param outbuf Address of variable that points to the output buffer.
+ * \param outbytesleft The number of bytes in the output buffer.
+ * \returns the number of conversions on success, else SDL_ICONV_E2BIG is
+ *          returned when the output buffer is too small, or SDL_ICONV_EILSEQ
+ *          is returned when an invalid input sequence is encountered, or
+ *          SDL_ICONV_EINVAL is returned when an incomplete input sequence is
+ *          encountered.
+ *
+ *          On exit:
+ *
+ *          - inbuf will point to the beginning of the next multibyte
+ *            sequence. On error, this is the location of the problematic
+ *            input sequence. On success, this is the end of the input
+ *            sequence. - inbytesleft will be set to the number of bytes left
+ *            to convert, which will be 0 on success. - outbuf will point to
+ *            the location where to store the next output byte. - outbytesleft
+ *            will be set to the number of bytes left in the output buffer.
+ *
+ * \since This function is available since SDL 3.0.0.
+ *
+ * \sa SDL_iconv_open
+ * \sa SDL_iconv_close
+ * \sa SDL_iconv_string
+ */
 extern SDL_DECLSPEC size_t SDLCALL SDL_iconv(SDL_iconv_t cd, const char **inbuf,
-                                         size_t * inbytesleft, char **outbuf,
-                                         size_t * outbytesleft);
+                                         size_t *inbytesleft, char **outbuf,
+                                         size_t *outbytesleft);
 
 /**
  * Helper function to convert a string's encoding in one call.
@@ -2928,6 +2996,10 @@ extern SDL_DECLSPEC size_t SDLCALL SDL_iconv(SDL_iconv_t cd, const char **inbuf,
  * \returns a new string, converted to the new encoding, or NULL on error.
  *
  * \since This function is available since SDL 3.0.0.
+ *
+ * \sa SDL_iconv_open
+ * \sa SDL_iconv_close
+ * \sa SDL_iconv
  */
 extern SDL_DECLSPEC char * SDLCALL SDL_iconv_string(const char *tocode,
                                                const char *fromcode,

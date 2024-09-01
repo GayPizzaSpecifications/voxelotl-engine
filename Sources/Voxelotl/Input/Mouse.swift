@@ -43,8 +43,7 @@ public class Mouse {
 
   private func getCapture() -> Bool { self._captured }
   private func setCapture(_ toggle: Bool) {
-    let sdlBool = toggle ? SDL_TRUE : SDL_FALSE
-    if SDL_SetRelativeMouseMode(sdlBool) >= 0 && SDL_SetWindowMouseGrab(self._window, sdlBool) >= 0 {
+    if SDL_SetWindowRelativeMouseMode(self._window, toggle) && SDL_SetWindowMouseGrab(self._window, toggle) {
       self._captured = toggle
     }
   }
