@@ -25,10 +25,14 @@ class Game: GameDelegate {
   var player = Player()
   var projection: matrix_float4x4 = .identity
   var world = World()
+  var cubeMesh: RendererMesh?
+  var renderChunks = [SIMD3<Int>: Mesh<VertexPositionNormalTexcoord, UInt16>]()
 
   func create(_ renderer: Renderer) {
     self.resetPlayer()
     self.generateWorld()
+
+    self.cubeMesh = renderer.createMesh(CubeMeshBuilder.build(bound: .fromUnitCube(position: .zero, scale: .one)))
 
     renderer.clearColor = Color<Double>.black.mix(.white, 0.1).linear
   }
@@ -104,8 +108,8 @@ class Game: GameDelegate {
             .init(angle: totalTime * 0.7, axis: .init(0, 0, 1)),
           color:    .init(r: 0.5, g: 0.5, b: 1).linear))
     }
-    if !instances.isEmpty {
-      renderer.batch(instances: instances, material: material, environment: env, camera: self.camera)
+    if self.cubeMesh != nil && !instances.isEmpty {
+      renderer.batch(instances: instances, mesh: self.cubeMesh!, material: material, environment: env, camera: self.camera)
     }
   }
 

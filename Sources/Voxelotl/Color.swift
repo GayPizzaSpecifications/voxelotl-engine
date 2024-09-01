@@ -1,6 +1,6 @@
 import Foundation
 
-public struct Color<T: SIMDScalar>: Equatable {
+public struct Color<T: SIMDScalar>: Hashable {
   private var _values: SIMD4<T>
 
   internal var values: SIMD4<T> { self._values }

@@ -4,42 +4,6 @@ import QuartzCore.CAMetalLayer
 import simd
 import ShaderTypes
 
-fileprivate let cubeVertices: [ShaderVertex] = [
-  .init(position: .init(-1, -1,  1), normal: .back,    texCoord: .init(0, 0)),
-  .init(position: .init( 1, -1,  1), normal: .back,    texCoord: .init(1, 0)),
-  .init(position: .init(-1,  1,  1), normal: .back,    texCoord: .init(0, 1)),
-  .init(position: .init( 1,  1,  1), normal: .back,    texCoord: .init(1, 1)),
-  .init(position: .init( 1, -1,  1), normal: .right,   texCoord: .init(0, 0)),
-  .init(position: .init( 1, -1, -1), normal: .right,   texCoord: .init(1, 0)),
-  .init(position: .init( 1,  1,  1), normal: .right,   texCoord: .init(0, 1)),
-  .init(position: .init( 1,  1, -1), normal: .right,   texCoord: .init(1, 1)),
-  .init(position: .init( 1, -1, -1), normal: .forward, texCoord: .init(0, 0)),
-  .init(position: .init(-1, -1, -1), normal: .forward, texCoord: .init(1, 0)),
-  .init(position: .init( 1,  1, -1), normal: .forward, texCoord: .init(0, 1)),
-  .init(position: .init(-1,  1, -1), normal: .forward, texCoord: .init(1, 1)),
-  .init(position: .init(-1, -1, -1), normal: .left,    texCoord: .init(0, 0)),
-  .init(position: .init(-1, -1,  1), normal: .left,    texCoord: .init(1, 0)),
-  .init(position: .init(-1,  1, -1), normal: .left,    texCoord: .init(0, 1)),
-  .init(position: .init(-1,  1,  1), normal: .left,    texCoord: .init(1, 1)),
-  .init(position: .init(-1, -1, -1), normal: .down,    texCoord: .init(0, 0)),
-  .init(position: .init( 1, -1, -1), normal: .down,    texCoord: .init(1, 0)),
-  .init(position: .init(-1, -1,  1), normal: .down,    texCoord: .init(0, 1)),
-  .init(position: .init( 1, -1,  1), normal: .down,    texCoord: .init(1, 1)),
-  .init(position: .init(-1,  1,  1), normal: .up,      texCoord: .init(0, 0)),
-  .init(position: .init( 1,  1,  1), normal: .up,      texCoord: .init(1, 0)),
-  .init(position: .init(-1,  1, -1), normal: .up,      texCoord: .init(0, 1)),
-  .init(position: .init( 1,  1, -1), normal: .up,      texCoord: .init(1, 1)),
-]
-
-fileprivate let cubeIndices: [UInt16] = [
-   0,  1,  2,  2,  1,  3,
-   4,  5,  6,  6,  5,  7,
-   8,  9, 10, 10,  9, 11,
-  12, 13, 14, 14, 13, 15,
-  16, 17, 18, 18, 17, 19,
-  20, 21, 22, 22, 21, 23
-]
-
 fileprivate let numFramesInFlight: Int = 3
 fileprivate let colorFormat: MTLPixelFormat = .bgra8Unorm_srgb
 fileprivate let depthFormat: MTLPixelFormat = .depth32Float
@@ -61,7 +25,6 @@ public class Renderer {
 
   private var _encoder: MTLRenderCommandEncoder! = nil
 
-  private var vtxBuffer: MTLBuffer, idxBuffer: MTLBuffer
   private var defaultTexture: MTLTexture
   private var cubeTexture: MTLTexture? = nil
 
@@ -150,24 +113,6 @@ public class Renderer {
       throw RendererError.initFailure("Failed to create pipeline state: \(error.localizedDescription)")
     }
 
-    // Create cube mesh buffers
-    guard let vtxBuffer = device.makeBuffer(
-      bytes: cubeVertices,
-      length: cubeVertices.count * MemoryLayout<ShaderVertex>.stride,
-      options: .storageModeManaged)
-    else {
-      throw RendererError.initFailure("Failed to create vertex buffer")
-    }
-    self.vtxBuffer = vtxBuffer
-    guard let idxBuffer = device.makeBuffer(
-      bytes: cubeIndices,
-      length: cubeIndices.count * MemoryLayout<UInt16>.stride,
-      options: .storageModeManaged)
-    else {
-      throw RendererError.initFailure("Failed to create index buffer")
-    }
-    self.idxBuffer = idxBuffer
-
     // Create a default texture
     do {
       self.defaultTexture = try Self.loadTexture(device, queue, image2D: Image2D(Data([
@@ -190,6 +135,29 @@ public class Renderer {
 
   deinit {
     
+  }
+
+  func createMesh(_ mesh: Mesh<VertexPositionNormalTexcoord, UInt16>) -> RendererMesh? {
+    let vertices = mesh.vertices.map {
+      ShaderVertex(position: $0.position, normal: $0.normal, texCoord: $0.texCoord)
+    }
+    guard let vtxBuffer = self.device.makeBuffer(
+      bytes: vertices,
+      length: vertices.count * MemoryLayout<ShaderVertex>.stride,
+      options: .storageModeManaged)
+    else {
+      printErr("Failed to create vertex buffer")
+      return nil
+    }
+    guard let idxBuffer = device.makeBuffer(
+      bytes: mesh.indices,
+      length: mesh.indices.count * MemoryLayout<UInt16>.stride,
+      options: .storageModeManaged)
+    else {
+      printErr("Failed to create index buffer")
+      return nil
+    }
+    return .init(_vertBuf: vtxBuffer, _idxBuf: idxBuffer, numIndices: mesh.indices.count)
   }
 
   static func loadTexture(_ device: MTLDevice, _ queue: MTLCommandQueue, resourcePath path: String) throws -> MTLTexture {
@@ -329,7 +297,6 @@ public class Renderer {
       encoder.setRenderPipelineState(pso)
       encoder.setDepthStencilState(depthStencilState)
       encoder.setFragmentTexture(cubeTexture ?? defaultTexture, index: 0)
-      encoder.setVertexBuffer(vtxBuffer, offset: 0, index: VertexShaderInputIdx.vertices.rawValue)
 
       self._encoder = encoder
       frameFunc(self)
@@ -346,7 +313,7 @@ public class Renderer {
     }
   }
 
-  func batch(instances: [Instance], material: Material, environment: Environment, camera: Camera) {
+  func batch(instances: [Instance], mesh: RendererMesh, material: Material, environment: Environment, camera: Camera) {
     assert(self._encoder != nil, "batch can't be called outside of a frame being rendered")
 
     var vertUniforms = VertexShaderUniforms(projView: camera.viewProjection)
@@ -391,6 +358,7 @@ public class Renderer {
 
     self._encoder.setCullMode(.init(environment.cullFace))
 
+    self._encoder.setVertexBuffer(mesh._vertBuf, offset: 0, index: VertexShaderInputIdx.vertices.rawValue)
     self._encoder.setVertexBuffer(instanceBuffer,
       offset: 0,
       index: VertexShaderInputIdx.instance.rawValue)
@@ -404,12 +372,18 @@ public class Renderer {
 
     self._encoder.drawIndexedPrimitives(
       type: .triangle,
-      indexCount: cubeIndices.count,
+      indexCount: mesh.numIndices,
       indexType: .uint16,
-      indexBuffer: idxBuffer,
+      indexBuffer: mesh._idxBuf,
       indexBufferOffset: 0,
       instanceCount: numInstances)
   }
+}
+
+public struct RendererMesh {
+  fileprivate let _vertBuf: MTLBuffer
+  fileprivate let _idxBuf: MTLBuffer
+  public let numIndices: Int
 }
 
 extension MTLClearColor {

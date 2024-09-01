@@ -36,6 +36,7 @@ add_executable(Voxelotl MACOSX_BUNDLE
   # Renderer classes
   Renderer/Material.swift
   Renderer/Environment.swift
+  Renderer/Mesh.swift
   Renderer/Renderer.swift
 
   # Input wrappers
@@ -44,6 +45,7 @@ add_executable(Voxelotl MACOSX_BUNDLE
   Input/Mouse.swift
 
   # Core utility classes
+  CubeMeshBuilder.swift
   Color.swift
   Camera.swift
   FPSCalculator.swift

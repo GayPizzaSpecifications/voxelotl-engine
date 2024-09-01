@@ -1,4 +1,4 @@
-public struct Chunk {
+public struct Chunk: Hashable {
   public static let shift = 4  // 16
   public static let size: Int = 1 << shift
   public static let mask: Int = size - 1
@@ -63,6 +63,15 @@ public struct Chunk {
     }
   }
 
+  public func forEach(_ body: @escaping (Block, SIMD3<Int>) throws -> Void) rethrows {
+    for i in 0..<Self.blockCount {
+      try body(blocks[i], self.origin &+ SIMD3(
+        x: i & Self.mask,
+        y: (i &>> Self.shift) & Self.mask,
+        z: (i &>> (Self.shift + Self.shift)) & Self.mask))
+    }
+  }
+
   public func map<T>(block transform: (Block, SIMD3<Int>) throws -> T) rethrows -> [T] {
     assert(self.blocks.count == Self.blockCount)
 
@@ -112,12 +121,12 @@ public struct Chunk {
   }
 }
 
-public enum BlockType: Equatable {
+public enum BlockType: Hashable {
   case air
   case solid(_ color: Color<Float16>)
 }
 
-public struct Block {
+public struct Block: Hashable {
   public var type: BlockType
 
   public init(_ type: BlockType) {

@@ -90,12 +90,12 @@ public enum RaycastSide {
 public extension SIMD3 where Scalar == Int {
   func offset(by side: RaycastSide) -> Self {
     let ofs: Self = switch side {
-    case .right: .init( 1,  0,  0)
-    case .left:  .init(-1,  0,  0)
-    case .up:    .init( 0,  1,  0)
-    case .down:  .init( 0, -1,  0)
-    case .back:  .init( 0,  0,  1)
-    case .front: .init( 0,  0, -1)
+    case .right: .right
+    case .left:  .left
+    case .up:    .up
+    case .down:  .down
+    case .back:  .back
+    case .front: .forward
     }
     return self &+ ofs
   }

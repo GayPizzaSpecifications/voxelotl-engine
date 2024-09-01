@@ -19,6 +19,16 @@ public class World {
     self._chunks[position &>> Chunk.shift]?.setBlock(at: position, type: type)
   }
 
+  func getChunk(id chunkID: SIMD3<Int>) -> Chunk? {
+    self._chunks[chunkID]
+  }
+
+  public func forEachChunk(_ body: @escaping (_ id: SIMD3<Int>, _ chunk: Chunk) throws -> Void) rethrows {
+    for i in self._chunks {
+      try body(i.key, i.value)
+    }
+  }
+
   func generate(width: Int, height: Int, depth: Int, seed: UInt64) {
     self._generator.reset(seed: seed)
     let orig = SIMD3(width, height, depth) / 2
