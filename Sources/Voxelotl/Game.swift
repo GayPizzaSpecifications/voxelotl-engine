@@ -78,6 +78,13 @@ class Game: GameDelegate {
     }
 
     self.player.update(deltaTime: deltaTime, world: world, camera: &camera)
+    let centerChunkID = Chunk.getID(position: self.player.position)
+    chunkGenerateNeighbors.forEach { offset in
+          let chunkID = centerChunkID &+ offset
+          if self.world.getChunk(id: chunkID) == nil {
+            self.world.generate(chunkID: chunkID)
+          }
+    }
   }
 
   func draw(_ renderer: Renderer, _ time: GameTime) {
@@ -112,4 +119,34 @@ class Game: GameDelegate {
   func resize(_ size: Size<Int>) {
     self.camera.size = size
   }
+  
+  private let chunkGenerateNeighbors: [SIMD3<Int>] = [
+    SIMD3<Int>(-1, -1, -1),
+    SIMD3<Int>(0, -1, -1),
+    SIMD3<Int>(1, -1, -1),
+    SIMD3<Int>(-1, 0, -1),
+    SIMD3<Int>(0, 0, -1),
+    SIMD3<Int>(1, 0, -1),
+    SIMD3<Int>(-1, 1, -1),
+    SIMD3<Int>(0, 1, -1),
+    SIMD3<Int>(1, 1, -1),
+    SIMD3<Int>(-1, -1, 0),
+    SIMD3<Int>(0, -1, 0),
+    SIMD3<Int>(1, -1, 0),
+    SIMD3<Int>(-1, 0, 0),
+    SIMD3<Int>(0, 0, 0),
+    SIMD3<Int>(1, 0, 0),
+    SIMD3<Int>(-1, 1, 0),
+    SIMD3<Int>(0, 1, 0),
+    SIMD3<Int>(1, 1, 0),
+    SIMD3<Int>(-1, -1, 1),
+    SIMD3<Int>(0, -1, 1),
+    SIMD3<Int>(1, -1, 1),
+    SIMD3<Int>(-1, 0, 1),
+    SIMD3<Int>(0, 0, 1),
+    SIMD3<Int>(1, 0, 1),
+    SIMD3<Int>(-1, 1, 1),
+    SIMD3<Int>(0, 1, 1),
+    SIMD3<Int>(1, 1, 1),
+  ]
 }

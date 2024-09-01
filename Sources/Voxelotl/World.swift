@@ -4,6 +4,8 @@ public class World {
   private var _chunks: Dictionary<SIMD3<Int>, Chunk>
   private var _generator: WorldGenerator
 
+  let _chunkLock: NSLock = .init()
+  
   public init() {
     self._chunks = [:]
     self._generator = WorldGenerator()
@@ -18,6 +20,13 @@ public class World {
   func setBlock(at position: SIMD3<Int>, type: BlockType) {
     self._chunks[position &>> Chunk.shift]?.setBlock(at: position, type: type)
   }
+  
+  func getChunk(id chunkID: SIMD3<Int>) -> Chunk? {
+    self._chunkLock.lock()
+    let chunk = self._chunks[chunkID]
+    self._chunkLock.unlock()
+    return chunk
+  }
 
   func generate(width: Int, height: Int, depth: Int, seed: UInt64) {
     self._generator.reset(seed: seed)
@@ -26,18 +35,27 @@ public class World {
       for y in 0..<height {
         for x in 0..<width {
           let chunkID = SIMD3(x, y, z) &- orig
-          self._chunks[chunkID] = self._generator.makeChunk(id: chunkID)
+          self.generate(chunkID: chunkID)
         }
       }
     }
   }
 
   func generate(chunkID: SIMD3<Int>) {
-    self._chunks[chunkID] = self._generator.makeChunk(id: chunkID)
+    if self._generator.isCurrentlyGenerating(id: chunkID) { return }
+    self._generator.makeChunk(id: chunkID) { chunk in
+      self._chunkLock.lock()
+      self._chunks[chunkID] = chunk
+      self._chunkLock.unlock()
+    }
   }
 
   var instances: [Instance] {
-    self._chunks.values.flatMap { chunk in
+    self._chunkLock.lock()
+    defer {
+      self._chunkLock.unlock()
+    }
+    return self._chunks.values.flatMap { chunk in
       chunk.compactMap { block, position in
         if case let .solid(color) = block.type {
           Instance(

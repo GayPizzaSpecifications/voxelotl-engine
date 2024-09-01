@@ -1,3 +1,5 @@
+import simd
+
 public struct Chunk {
   public static let shift = 4  // 16
   public static let size: Int = 1 << shift
@@ -10,7 +12,11 @@ public struct Chunk {
   
   public let origin: SIMD3<Int>
   private var blocks: [Block]
-  
+
+  static func getID(position: SIMD3<Float>) -> SIMD3<Int> {
+    SIMD3(floor(position)) &>> Chunk.shift
+  }
+
   init(position: SIMD3<Int>, blocks: [Block]) {
     assert(blocks.count == Self.blockCount)
     self.origin = position
