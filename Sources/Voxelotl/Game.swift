@@ -4,13 +4,13 @@ struct Instance {
   let position: SIMD3<Float>
   let scale: SIMD3<Float>
   let rotation: simd_quatf
-  let color: Color<Float16>
+  let color: Color<Float>
 
   init(
     position: SIMD3<Float> = .zero,
     scale: SIMD3<Float> = .one,
     rotation: simd_quatf = .identity,
-    color: Color<Float16> = .white
+    color: Color<Float> = .white
   ) {
     self.position = position
     self.scale = scale

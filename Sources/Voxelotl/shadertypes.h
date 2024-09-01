@@ -10,12 +10,7 @@
 
 #include <simd/simd.h>
 
-// HACK: allow passing SIMD4<Float16> to shader while `simd_half4` is beta
-#ifdef __METAL_VERSION__
-typedef half4 color_half4;
-#else
-typedef simd_ushort4 color_half4;
-#endif
+typedef simd_float4 color_float4;
 
 typedef NS_ENUM(NSInteger, VertexShaderInputIdx) {
   VertexShaderInputIdxVertices = 0,
@@ -26,14 +21,14 @@ typedef NS_ENUM(NSInteger, VertexShaderInputIdx) {
 typedef struct {
   vector_float3 position;
   vector_float3 normal;
-  color_half4   color;
+  color_float4   color;
   vector_float2 texCoord;
 } ShaderVertex;
 
 typedef struct {
   matrix_float4x4 model;
   matrix_float4x4 normalModel;
-  color_half4     color;
+  color_float4     color;
 } VertexShaderInstance;
 
 typedef struct {
@@ -46,7 +41,7 @@ typedef NS_ENUM(NSInteger, FragmentShaderInputIdx) {
 
 typedef struct {
   vector_float3 cameraPosition, directionalLight;
-  color_half4 ambientColor, diffuseColor, specularColor;
+  color_float4 ambientColor, diffuseColor, specularColor;
   float specularIntensity;
 } FragmentShaderUniforms;
 
