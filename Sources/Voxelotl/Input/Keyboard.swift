@@ -3,6 +3,7 @@ import SDL3
 public class Keyboard {
   public enum Keys {
     case a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x, y, z
+    case leftBracket
     case right, left, up, down
     case space, tab
   }
@@ -85,6 +86,7 @@ internal extension Keyboard.Keys {
     case .x:     SDLK_X
     case .y:     SDLK_Y
     case .z:     SDLK_Z
+    case .leftBracket: SDLK_LEFTBRACKET
     case .left:  SDLK_LEFT
     case .right: SDLK_RIGHT
     case .up:    SDLK_UP
@@ -122,6 +124,7 @@ internal extension Keyboard.Keys {
     case .x:     SDL_SCANCODE_X
     case .y:     SDL_SCANCODE_Y
     case .z:     SDL_SCANCODE_Z
+    case .leftBracket: SDL_SCANCODE_LEFTBRACKET
     case .left:  SDL_SCANCODE_LEFT
     case .right: SDL_SCANCODE_RIGHT
     case .up:    SDL_SCANCODE_UP

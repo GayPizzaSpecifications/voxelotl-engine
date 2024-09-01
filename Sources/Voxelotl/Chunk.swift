@@ -65,7 +65,7 @@ public struct Chunk: Hashable {
 
   public func forEach(_ body: @escaping (Block, SIMD3<Int>) throws -> Void) rethrows {
     for i in 0..<Self.blockCount {
-      try body(blocks[i], self.origin &+ SIMD3(
+      try body(blocks[i], SIMD3(
         x: i & Self.mask,
         y: (i &>> Self.shift) & Self.mask,
         z: (i &>> (Self.shift + Self.shift)) & Self.mask))

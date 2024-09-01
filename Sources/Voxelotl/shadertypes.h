@@ -26,13 +26,14 @@ typedef NS_ENUM(NSInteger, VertexShaderInputIdx) {
 typedef struct {
   vector_float3 position;
   vector_float3 normal;
+  color_half4   color;
   vector_float2 texCoord;
 } ShaderVertex;
 
 typedef struct {
   matrix_float4x4 model;
   matrix_float4x4 normalModel;
-  color_half4 color;
+  color_half4     color;
 } VertexShaderInstance;
 
 typedef struct {

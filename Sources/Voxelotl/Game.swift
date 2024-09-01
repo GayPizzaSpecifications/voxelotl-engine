@@ -26,7 +26,10 @@ class Game: GameDelegate {
   var projection: matrix_float4x4 = .identity
   var world = World()
   var cubeMesh: RendererMesh?
-  var renderChunks = [SIMD3<Int>: Mesh<VertexPositionNormalTexcoord, UInt16>]()
+
+  var renderMode: Bool = false
+  var damageChunks = [SIMD3<Int>: Mesh<VertexPositionNormalColorTexcoord, UInt16>]()
+  var renderChunks = [SIMD3<Int>: RendererMesh]()
 
   func create(_ renderer: Renderer) {
     self.resetPlayer()
@@ -47,10 +50,19 @@ class Game: GameDelegate {
     let seed = UInt64(Arc4Random.instance.next()) | UInt64(Arc4Random.instance.next()) << 32
     printErr(seed)
 #if DEBUG
-    self.world.generate(width: 2, height: 1, depth: 1, seed: seed)
+    self.world.generate(width: 2, height: 2, depth: 2, seed: seed)
 #else
     self.world.generate(width: 5, height: 3, depth: 5, seed: seed)
 #endif
+
+    // Build chunk meshes
+    self.rebuildChunkMeshes()
+  }
+
+  private func rebuildChunkMeshes() {
+    self.world.forEachChunk { id, chunk in
+      self.damageChunks[id] = ChunkMeshBuilder.build(world: self.world, chunkID: id)
+    }
   }
 
   func fixedUpdate(_ time: GameTime) {
@@ -64,13 +76,16 @@ class Game: GameDelegate {
 
     let deltaTime = min(Float(time.delta.asFloat), 1.0 / 15)
 
-    var reset = false, generate = false
+    var reset = false, generate = false, toggleRenderMode = false
     if let pad = GameController.current?.state {
       if pad.pressed(.back) { reset = true }
       if pad.pressed(.start) { generate = true }
+      if pad.pressed(.guide) { toggleRenderMode = true }
     }
     if Keyboard.pressed(.r) { reset = true }
     if Keyboard.pressed(.g) { generate = true }
+    if Keyboard.pressed(.p, repeat: true) { toggleRenderMode = true }
+    if Keyboard.pressed(.leftBracket) { self.rebuildChunkMeshes() }
 
     // Player reset
     if reset {
@@ -79,6 +94,9 @@ class Game: GameDelegate {
     // Regenerate
     if generate {
       self.generateWorld()
+    }
+    if toggleRenderMode {
+      self.renderMode = !self.renderMode
     }
 
     self.player.update(deltaTime: deltaTime, world: world, camera: &camera)
@@ -96,7 +114,32 @@ class Game: GameDelegate {
       specular: Color(rgba8888: 0x2F2F2F00).linear,
       gloss: 75)
 
-    var instances = world.instances
+    if self.renderMode {
+      // Update chunk meshes if needed
+      if !self.damageChunks.isEmpty {
+        for i in self.damageChunks {
+          if let new = renderer.createMesh(i.1) {
+            self.renderChunks[i.0] = new
+          } else {
+            self.renderChunks.removeValue(forKey: i.0)
+          }
+        }
+        self.damageChunks = [:]
+      }
+
+      for (id, chunk) in self.renderChunks {
+        let drawPos = SIMD3<Float>(id &<< Chunk.shift)
+        renderer.draw(
+          model: .translate(drawPos),
+          color: .white,
+          mesh: chunk,
+          material: material,
+          environment: env,
+          camera: self.camera)
+      }
+    }
+
+    var instances = self.renderMode ? [Instance]() : world.instances
     if let position = player.rayhitPos {
       instances.append(
         Instance(

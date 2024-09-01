@@ -137,9 +137,37 @@ public class Renderer {
     
   }
 
-  func createMesh(_ mesh: Mesh<VertexPositionNormalTexcoord, UInt16>) -> RendererMesh? {
+  func createMesh(_ mesh: Mesh<VertexPositionNormalColorTexcoord, UInt16>) -> RendererMesh? {
+    if mesh.vertices.isEmpty || mesh.indices.isEmpty { return nil }
+
     let vertices = mesh.vertices.map {
-      ShaderVertex(position: $0.position, normal: $0.normal, texCoord: $0.texCoord)
+      ShaderVertex(position: $0.position, normal: $0.normal, color: $0.color.reinterpretUShort, texCoord: $0.texCoord)
+    }
+    guard let vtxBuffer = self.device.makeBuffer(
+      bytes: vertices,
+      length: vertices.count * MemoryLayout<ShaderVertex>.stride,
+      options: .storageModeManaged)
+    else {
+      printErr("Failed to create vertex buffer")
+      return nil
+    }
+    guard let idxBuffer = device.makeBuffer(
+      bytes: mesh.indices,
+      length: mesh.indices.count * MemoryLayout<UInt16>.stride,
+      options: .storageModeManaged)
+    else {
+      printErr("Failed to create index buffer")
+      return nil
+    }
+    return .init(_vertBuf: vtxBuffer, _idxBuf: idxBuffer, numIndices: mesh.indices.count)
+  }
+
+  func createMesh(_ mesh: Mesh<VertexPositionNormalTexcoord, UInt16>) -> RendererMesh? {
+    if mesh.vertices.isEmpty || mesh.indices.isEmpty { return nil }
+
+    let color = Color<Float16>.white.reinterpretUShort
+    let vertices = mesh.vertices.map {
+      ShaderVertex(position: $0.position, normal: $0.normal, color: color, texCoord: $0.texCoord)
     }
     guard let vtxBuffer = self.device.makeBuffer(
       bytes: vertices,
@@ -313,6 +341,44 @@ public class Renderer {
     }
   }
 
+  func draw(model: matrix_float4x4, color: Color<Float16>, mesh: RendererMesh, material: Material, environment: Environment, camera: Camera) {
+    assert(self._encoder != nil, "draw can't be called outside of a frame being rendered")
+
+    var vertUniforms = VertexShaderUniforms(projView: camera.viewProjection)
+    var fragUniforms = FragmentShaderUniforms(
+      cameraPosition: camera.position,
+      directionalLight: normalize(environment.lightDirection),
+      ambientColor:  material.ambient.reinterpretUShort,
+      diffuseColor:  material.diffuse.reinterpretUShort,
+      specularColor: material.specular.reinterpretUShort,
+      specularIntensity: material.gloss)
+    var instance = VertexShaderInstance(
+      model:       model,
+      normalModel: model.inverse.transpose,
+      color:       color.reinterpretUShort)
+
+    self._encoder.setCullMode(.init(environment.cullFace))
+
+    self._encoder.setVertexBuffer(mesh._vertBuf, offset: 0, index: VertexShaderInputIdx.vertices.rawValue)
+    // Ideal as long as our uniforms total 4 KB or less
+    self._encoder.setVertexBytes(&instance,
+      length: MemoryLayout<VertexShaderInstance>.stride,
+      index: VertexShaderInputIdx.instance.rawValue)
+    self._encoder.setVertexBytes(&vertUniforms,
+      length: MemoryLayout<VertexShaderUniforms>.stride,
+      index: VertexShaderInputIdx.uniforms.rawValue)
+    self._encoder.setFragmentBytes(&fragUniforms,
+      length: MemoryLayout<FragmentShaderUniforms>.stride,
+      index: FragmentShaderInputIdx.uniforms.rawValue)
+
+    self._encoder.drawIndexedPrimitives(
+      type: .triangle,
+      indexCount: mesh.numIndices,
+      indexType: .uint16,
+      indexBuffer: mesh._idxBuf,
+      indexBufferOffset: 0)
+  }
+
   func batch(instances: [Instance], mesh: RendererMesh, material: Material, environment: Environment, camera: Camera) {
     assert(self._encoder != nil, "batch can't be called outside of a frame being rendered")
 
@@ -405,6 +471,11 @@ fileprivate extension MTLCullMode {
 fileprivate extension Color where T == Float16 {
   var reinterpretUShort: SIMD4<UInt16> {
     .init(self.r.bitPattern, self.g.bitPattern, self.b.bitPattern, self.a.bitPattern)
+  }
+}
+fileprivate extension SIMD4 where Scalar == Float16 {
+  var reinterpretUShort: SIMD4<UInt16> {
+    .init(self.x.bitPattern, self.y.bitPattern, self.z.bitPattern, self.w.bitPattern)
   }
 }
 
