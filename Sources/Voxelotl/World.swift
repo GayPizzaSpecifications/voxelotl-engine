@@ -63,7 +63,7 @@ public class World {
     self._generator.reset(seed: seed)
     let orig = SIMD3(width, height, depth) / 2
 
-    let localChunks = ConcurrentDictionary<SIMD3<Int>, Chunk>()
+    let localChunks = ConcurrentDictionary<ChunkID, Chunk>()
     let queue = OperationQueue()
     queue.qualityOfService = .userInitiated
     for z in 0..<depth {
