@@ -36,12 +36,18 @@ public class World {
       for (i, ofs) in zip(internalPos.indices, [ SIMD3<Int>.X, .Y, .Z ]) {
         if internalPos[i] == 0 {
           let id = chunkID &- ofs
-          if self._chunks.keys.contains(id) {
+          if let other = self._chunks[id],
+            // optim: Damage adjacent chunk only if block is touching a solid
+            case .solid = other.getBlock(internal: (internalPos &- ofs) & Chunk.mask).type
+          {
             self._chunkDamage.insert(id)
           }
         } else if internalPos[i] == Chunk.size - 1 {
           let id = chunkID &+ ofs
-          if self._chunks.keys.contains(id) {
+          if let other = self._chunks[id],
+            // optim: Damage adjacent chunk only if block is touching a solid
+            case .solid = other.getBlock(internal: (internalPos &+ ofs) & Chunk.mask).type
+          {
             self._chunkDamage.insert(id)
           }
         }
