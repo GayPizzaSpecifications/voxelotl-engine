@@ -63,8 +63,7 @@ public class World {
     self._generator.reset(seed: seed)
     let orig = SIMD3(width, height, depth) / 2
 
-    var localChunks: [SIMD3<Int>: Chunk] = [:]
-    let localChunksLock = NSLock()
+    let localChunks = ConcurrentDictionary<SIMD3<Int>, Chunk>()
     let queue = OperationQueue()
     queue.qualityOfService = .userInitiated
     for z in 0..<depth {
@@ -73,10 +72,6 @@ public class World {
           let chunkID = SIMD3(x, y, z) &- orig
           queue.addOperation {
             let chunk = self._generator.makeChunk(id: chunkID)
-            localChunksLock.lock()
-            defer {
-              localChunksLock.unlock()
-            }
             localChunks[chunkID] = chunk
           }
         }
