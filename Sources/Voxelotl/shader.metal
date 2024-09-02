@@ -7,7 +7,7 @@ struct FragmentInput {
   float3 world;
   float3 normal;
   float2 texCoord;
-  float4 color;
+  half4 color;
 };
 
 vertex FragmentInput vertexMain(
@@ -23,13 +23,13 @@ vertex FragmentInput vertexMain(
   FragmentInput out;
   out.position = u.projView * world;
   out.world    = world.xyz;
-  out.color    = vtx[vertexID].color * i[instanceID].color;
+  out.color    = half4(vtx[vertexID].color) * half4(i[instanceID].color);
   out.normal   = (i[instanceID].normalModel * float4(vtx[vertexID].normal, 0)).xyz;
   out.texCoord = vtx[vertexID].texCoord;
   return out;
 }
 
-fragment float4 fragmentMain(
+fragment half4 fragmentMain(
   FragmentInput in [[stage_in]],
   metal::texture2d<half, metal::access::sample> texture [[texture(0)]],
   constant FragmentShaderUniforms& u [[buffer(FragmentShaderInputIdxUniforms)]]
@@ -45,18 +45,18 @@ fragment float4 fragmentMain(
   // Compute diffuse component
   float lambert = metal::dot(normal, lightVec);
   float diffuseAmount = metal::max(0.0, lambert);
-  float4 diffuse = u.diffuseColor * diffuseAmount;
+  half4 diffuse = half4(u.diffuseColor) * diffuseAmount;
 
   // Compute specular component (blinn-phong)
   float specularAngle = metal::max(0.0, metal::dot(halfDir, normal));
   float specularTerm = metal::pow(specularAngle, u.specularIntensity);
   // smoothstep hack to ensure highlight tapers gracefully at grazing angles
   float specularAmount = specularTerm * metal::smoothstep(0, 2, lambert * u.specularIntensity);
-  float4 specular = u.specularColor * specularAmount;
+  half4 specular = half4(u.specularColor) * specularAmount;
 
   // Sample texture & vertex color to get albedo
-  float4 albedo = float4(texture.sample(sampler, in.texCoord));
-  albedo *= in.color;
+  half4 albedo = texture.sample(sampler, in.texCoord);
+  albedo *= half4(in.color);
 
-  return albedo * (u.ambientColor + diffuse) + specular;
+  return albedo * (half4(u.ambientColor) + diffuse) + specular;
 }

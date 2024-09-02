@@ -10,8 +10,6 @@
 
 #include <simd/simd.h>
 
-typedef simd_float4 color_float4;
-
 typedef NS_ENUM(NSInteger, VertexShaderInputIdx) {
   VertexShaderInputIdxVertices = 0,
   VertexShaderInputIdxInstance = 1,
@@ -21,14 +19,14 @@ typedef NS_ENUM(NSInteger, VertexShaderInputIdx) {
 typedef struct {
   vector_float3 position;
   vector_float3 normal;
-  color_float4   color;
+  vector_float4 color;
   vector_float2 texCoord;
 } ShaderVertex;
 
 typedef struct {
   matrix_float4x4 model;
   matrix_float4x4 normalModel;
-  color_float4     color;
+  vector_float4   color;
 } VertexShaderInstance;
 
 typedef struct {
@@ -41,7 +39,7 @@ typedef NS_ENUM(NSInteger, FragmentShaderInputIdx) {
 
 typedef struct {
   vector_float3 cameraPosition, directionalLight;
-  color_float4 ambientColor, diffuseColor, specularColor;
+  vector_float4 ambientColor, diffuseColor, specularColor;
   float specularIntensity;
 } FragmentShaderUniforms;
 

@@ -167,7 +167,7 @@ public class Renderer {
 
     let color = Color<Float>.white
     let vertices = mesh.vertices.map {
-      ShaderVertex(position: $0.position, normal: $0.normal, color: color.values, texCoord: $0.texCoord)
+      ShaderVertex(position: $0.position, normal: $0.normal, color: SIMD4(color), texCoord: $0.texCoord)
     }
     guard let vtxBuffer = self.device.makeBuffer(
       bytes: vertices,
@@ -348,14 +348,14 @@ public class Renderer {
     var fragUniforms = FragmentShaderUniforms(
       cameraPosition: camera.position,
       directionalLight: normalize(environment.lightDirection),
-      ambientColor:  material.ambient.values,
-      diffuseColor:  material.diffuse.values,
-      specularColor: material.specular.values,
+      ambientColor:  SIMD4(material.ambient),
+      diffuseColor:  SIMD4(material.diffuse),
+      specularColor: SIMD4(material.specular),
       specularIntensity: material.gloss)
     var instance = VertexShaderInstance(
       model:       model,
       normalModel: model.inverse.transpose,
-      color:       color.values)
+      color:       SIMD4(color))
 
     self._encoder.setCullMode(.init(environment.cullFace))
 
@@ -386,9 +386,9 @@ public class Renderer {
     var fragUniforms = FragmentShaderUniforms(
       cameraPosition: camera.position,
       directionalLight: normalize(environment.lightDirection),
-      ambientColor:  material.ambient.values,
-      diffuseColor:  material.diffuse.values,
-      specularColor: material.specular.values,
+      ambientColor:  SIMD4(material.ambient),
+      diffuseColor:  SIMD4(material.diffuse),
+      specularColor: SIMD4(material.specular),
       specularIntensity: material.gloss)
 
     let numInstances = instances.count
@@ -417,7 +417,7 @@ public class Renderer {
           .scale(instance.scale)
         data[i] = VertexShaderInstance(
           model: model, normalModel: model.inverse.transpose,
-          color: instance.color.values)
+          color: SIMD4(instance.color))
       }
     }
     instanceBuffer.didModifyRange(0..<instancesBytes)
@@ -465,17 +465,6 @@ fileprivate extension MTLCullMode {
     case .front: .front
     case .back: .back
     }
-  }
-}
-
-fileprivate extension Color where T == Float {
-  var reinterpretUInt: SIMD4<UInt32> {
-    .init(self.r.bitPattern, self.g.bitPattern, self.b.bitPattern, self.a.bitPattern)
-  }
-}
-fileprivate extension SIMD4 where Scalar == Float {
-  var reinterpretUShort: SIMD4<UInt32> {
-    .init(self.x.bitPattern, self.y.bitPattern, self.z.bitPattern, self.w.bitPattern)
   }
 }
 
