@@ -7,8 +7,10 @@ add_executable(Voxelotl MACOSX_BUNDLE
   shadertypes.h
   shader.metal
 
-  # Common library
+  # Common utility library
   Common/ConcurrentDictionary.swift
+  Common/Color.swift
+  Common/FPSCalculator.swift
 
   # Maths library
   Math/FloatExtensions.swift
@@ -34,7 +36,7 @@ add_executable(Voxelotl MACOSX_BUNDLE
   Random/SplitMix64.swift
 
   # Resource classes
-  NSImageLoader.swift
+  Resource/NSImageLoader.swift
 
   # Renderer classes
   Renderer/Material.swift
@@ -47,22 +49,20 @@ add_executable(Voxelotl MACOSX_BUNDLE
   Input/GameController.swift
   Input/Mouse.swift
 
-  # Core utility classes
-  CubeMeshBuilder.swift
-  Color.swift
-  Camera.swift
-  FPSCalculator.swift
-  GameDelegate.swift
-  Application.swift
-
   # Game logic classes
   Chunk.swift
   WorldGenerator.swift
+  CubeMeshBuilder.swift
   ChunkMeshBuilder.swift
   World.swift
   Raycast.swift
+  Camera.swift
   Player.swift
   Game.swift
+
+  # Core application classes
+  GameDelegate.swift
+  Application.swift
 
   main.swift)
 
