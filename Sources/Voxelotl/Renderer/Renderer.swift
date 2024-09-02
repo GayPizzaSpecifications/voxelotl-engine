@@ -19,7 +19,7 @@ public class Renderer {
   private let passDescription = MTLRenderPassDescriptor()
   private var pso: MTLRenderPipelineState
   private var depthStencilState: MTLDepthStencilState
-  private let _defaultStorage: MTLResourceOptions
+  private let _defaultStorageMode: MTLResourceOptions
 
   private var depthTextures: [MTLTexture]
   private var _instances: [MTLBuffer?]
@@ -56,13 +56,14 @@ public class Renderer {
       throw RendererError.initFailure("Failed to create Metal device")
     }
     self.device = device
-#if arch(x86_64)
-    // https://developer.apple.com/documentation/metal/gpu_devices_and_work_submission/multi-gpu_systems/finding_multiple_gpus_on_an_intel-based_mac#3030770
-    self._defaultStorage = (self.device.isRemovable || (!self.device.isLowPower && !self.device.isRemovable))
-      ? .storageModeManaged : .storageModeShared
-#else
-    self._defaultStorage = .storageModeShared
-#endif
+    self._defaultStorageMode = if #available(macOS 100.100, iOS 12.0, *) {
+      .storageModeShared
+    } else if #available(macOS 10.15, iOS 13.0, *) {
+      self.device.hasUnifiedMemory ? .storageModeShared : .storageModeManaged
+    } else {
+      // https://developer.apple.com/documentation/metal/gpu_devices_and_work_submission/multi-gpu_systems/finding_multiple_gpus_on_an_intel-based_mac#3030770
+      (self.device.isLowPower && !self.device.isRemovable) ? .storageModeShared : .storageModeManaged
+    }
 
     layer.device = device
     layer.pixelFormat = colorFormat
@@ -126,14 +127,14 @@ public class Renderer {
       self.defaultTexture = try Self.loadTexture(device, queue, image2D: Image2D(Data([
           0xFF, 0x00, 0xFF, 0xFF,  0x00, 0x00, 0x00, 0xFF,
           0x00, 0x00, 0x00, 0xFF,  0xFF, 0x00, 0xFF, 0xFF
-        ]), format: .abgr8888, width: 2, height: 2, stride: 2 * 4), self._defaultStorage)
+        ]), format: .abgr8888, width: 2, height: 2, stride: 2 * 4), self._defaultStorageMode)
     } catch {
       throw RendererError.initFailure("Failed to create default texture")
     }
 
     // Load texture from a file in the bundle
     do {
-      self.cubeTexture = try Self.loadTexture(device, queue, resourcePath: "test.png", self._defaultStorage)
+      self.cubeTexture = try Self.loadTexture(device, queue, resourcePath: "test.png", self._defaultStorageMode)
     } catch RendererError.loadFailure(let message) {
       printErr("Failed to load texture image: \(message)")
     } catch {
@@ -167,14 +168,14 @@ public class Renderer {
   private func createMesh(_ vertices: [ShaderVertex], _ indices: [UInt16]) -> RendererMesh? {
     autoreleasepool {
       let vtxSize = vertices.count * MemoryLayout<ShaderVertex>.stride
-      guard let vtxSource = self.device.makeBuffer(bytes: vertices, length: vtxSize, options: self._defaultStorage) else {
+      guard let vtxSource = self.device.makeBuffer(bytes: vertices, length: vtxSize, options: self._defaultStorageMode) else {
         printErr("Failed to create vertex buffer source")
         return nil
       }
 
       let numIndices = indices.count
       let idxSize = numIndices * MemoryLayout<UInt16>.stride
-      guard let idxSource = self.device.makeBuffer(bytes: indices, length: idxSize, options: self._defaultStorage) else {
+      guard let idxSource = self.device.makeBuffer(bytes: indices, length: idxSize, options: self._defaultStorageMode) else {
         printErr("Failed to create index buffer source")
         return nil
       }
@@ -290,11 +291,11 @@ public class Renderer {
       texDescriptor.depth       = 1
       texDescriptor.sampleCount = 1
       texDescriptor.usage       = [ .renderTarget, .shaderRead ]
-  #if !NDEBUG
+#if !NDEBUG
       texDescriptor.storageMode = .private
-  #else
+#else
       texDescriptor.storageMode = .memoryless
-  #endif
+#endif
 
       guard let depthStencilTexture = device.makeTexture(descriptor: texDescriptor) else { return nil }
       depthStencilTexture.label = "Depth buffer"
@@ -425,7 +426,7 @@ public class Renderer {
     if self._instances[self.currentFrame] == nil || instancesBytes > self._instances[self.currentFrame]!.length {
       guard let instanceBuffer = self.device.makeBuffer(
         length: instancesBytes,
-        options: self._defaultStorage)
+        options: self._defaultStorageMode)
       else {
         fatalError("Failed to (re)create instance buffer")
       }
@@ -447,8 +448,8 @@ public class Renderer {
           color: SIMD4(instance.color))
       }
     }
-#if arch(x86_64)
-    if self._defaultStorage == .storageModeManaged {
+#if os(macOS)
+    if self._defaultStorageMode == .storageModeManaged {
       instanceBuffer.didModifyRange(0..<instancesBytes)
     }
 #endif
