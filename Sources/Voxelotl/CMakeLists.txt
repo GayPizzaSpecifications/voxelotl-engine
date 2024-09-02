@@ -7,6 +7,9 @@ add_executable(Voxelotl MACOSX_BUNDLE
   shadertypes.h
   shader.metal
 
+  # Common library
+  Common/ConcurrentDictionary.swift
+
   # Maths library
   Math/FloatExtensions.swift
   Math/IntegerExtensions.swift
@@ -98,6 +101,7 @@ set_source_files_properties(test.png PROPERTIES MACOSX_PACKAGE_LOCATION Resource
 
 #TODO: should use TREE mode as documented in https://cmake.org/cmake/help/latest/command/source_group.html
 source_group("Resources" FILES Assets.xcassets test.png)
+source_group("Source Files\\Common" REGULAR_EXPRESSION "Common/")
 source_group("Source Files" REGULAR_EXPRESSION "\\.(swift|metal)$")
 source_group("Source Files\\Random" REGULAR_EXPRESSION "Random/")
 source_group("Source Files\\Math" REGULAR_EXPRESSION "Math/")

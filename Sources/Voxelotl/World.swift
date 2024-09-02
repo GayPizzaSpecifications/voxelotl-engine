@@ -62,14 +62,25 @@ public class World {
   func generate(width: Int, height: Int, depth: Int, seed: UInt64) {
     self._generator.reset(seed: seed)
     let orig = SIMD3(width, height, depth) / 2
+
+    let localChunks = ConcurrentDictionary<ChunkID, Chunk>()
+    let queue = OperationQueue()
+    queue.qualityOfService = .userInitiated
     for z in 0..<depth {
       for y in 0..<height {
         for x in 0..<width {
           let chunkID = SIMD3(x, y, z) &- orig
-          self._chunks[chunkID] = self._generator.makeChunk(id: chunkID)
-          self._chunkDamage.insert(chunkID)
+          queue.addOperation {
+            let chunk = self._generator.makeChunk(id: chunkID)
+            localChunks[chunkID] = chunk
+          }
         }
       }
+    }
+    queue.waitUntilAllOperationsAreFinished()
+    for (chunkID, chunk) in localChunks {
+      self._chunks[chunkID] = chunk
+      self._chunkDamage.insert(chunkID)
     }
   }
 
