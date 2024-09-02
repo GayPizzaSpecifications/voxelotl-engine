@@ -425,7 +425,7 @@ public class Renderer {
     if self._instances[self.currentFrame] == nil || instancesBytes > self._instances[self.currentFrame]!.length {
       guard let instanceBuffer = self.device.makeBuffer(
         length: instancesBytes,
-        options: .storageModeManaged)
+        options: self._defaultStorage)
       else {
         fatalError("Failed to (re)create instance buffer")
       }
@@ -447,7 +447,11 @@ public class Renderer {
           color: SIMD4(instance.color))
       }
     }
-    instanceBuffer.didModifyRange(0..<instancesBytes)
+#if arch(x86_64)
+    if self._defaultStorage == .storageModeManaged {
+      instanceBuffer.didModifyRange(0..<instancesBytes)
+    }
+#endif
 
     self._encoder.setCullMode(.init(environment.cullFace))
 
