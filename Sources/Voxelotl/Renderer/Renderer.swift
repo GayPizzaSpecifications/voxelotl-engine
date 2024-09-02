@@ -19,6 +19,7 @@ public class Renderer {
   private let passDescription = MTLRenderPassDescriptor()
   private var pso: MTLRenderPipelineState
   private var depthStencilState: MTLDepthStencilState
+  private let _defaultStorage: MTLResourceOptions
 
   private var depthTextures: [MTLTexture]
   private var _instances: [MTLBuffer?]
@@ -55,6 +56,13 @@ public class Renderer {
       throw RendererError.initFailure("Failed to create Metal device")
     }
     self.device = device
+#if arch(x86_64)
+    // https://developer.apple.com/documentation/metal/gpu_devices_and_work_submission/multi-gpu_systems/finding_multiple_gpus_on_an_intel-based_mac#3030770
+    self._defaultStorage = (self.device.isRemovable || (!self.device.isLowPower && !self.device.isRemovable))
+      ? .storageModeManaged : .storageModeShared
+#else
+    self._defaultStorage = .storageModeShared
+#endif
 
     layer.device = device
     layer.pixelFormat = colorFormat
@@ -118,14 +126,14 @@ public class Renderer {
       self.defaultTexture = try Self.loadTexture(device, queue, image2D: Image2D(Data([
           0xFF, 0x00, 0xFF, 0xFF,  0x00, 0x00, 0x00, 0xFF,
           0x00, 0x00, 0x00, 0xFF,  0xFF, 0x00, 0xFF, 0xFF
-        ]), format: .abgr8888, width: 2, height: 2, stride: 2 * 4))
+        ]), format: .abgr8888, width: 2, height: 2, stride: 2 * 4), self._defaultStorage)
     } catch {
       throw RendererError.initFailure("Failed to create default texture")
     }
 
     // Load texture from a file in the bundle
     do {
-      self.cubeTexture = try Self.loadTexture(device, queue, resourcePath: "test.png")
+      self.cubeTexture = try Self.loadTexture(device, queue, resourcePath: "test.png", self._defaultStorage)
     } catch RendererError.loadFailure(let message) {
       printErr("Failed to load texture image: \(message)")
     } catch {
@@ -143,23 +151,7 @@ public class Renderer {
     let vertices = mesh.vertices.map {
       ShaderVertex(position: $0.position, normal: $0.normal, color: $0.color, texCoord: $0.texCoord)
     }
-    guard let vtxBuffer = self.device.makeBuffer(
-      bytes: vertices,
-      length: vertices.count * MemoryLayout<ShaderVertex>.stride,
-      options: .storageModeManaged)
-    else {
-      printErr("Failed to create vertex buffer")
-      return nil
-    }
-    guard let idxBuffer = device.makeBuffer(
-      bytes: mesh.indices,
-      length: mesh.indices.count * MemoryLayout<UInt16>.stride,
-      options: .storageModeManaged)
-    else {
-      printErr("Failed to create index buffer")
-      return nil
-    }
-    return .init(_vertBuf: vtxBuffer, _idxBuf: idxBuffer, numIndices: mesh.indices.count)
+    return self.createMesh(vertices, mesh.indices)
   }
 
   func createMesh(_ mesh: Mesh<VertexPositionNormalTexcoord, UInt16>) -> RendererMesh? {
@@ -169,42 +161,77 @@ public class Renderer {
     let vertices = mesh.vertices.map {
       ShaderVertex(position: $0.position, normal: $0.normal, color: SIMD4(color), texCoord: $0.texCoord)
     }
-    guard let vtxBuffer = self.device.makeBuffer(
-      bytes: vertices,
-      length: vertices.count * MemoryLayout<ShaderVertex>.stride,
-      options: .storageModeManaged)
-    else {
-      printErr("Failed to create vertex buffer")
-      return nil
-    }
-    guard let idxBuffer = device.makeBuffer(
-      bytes: mesh.indices,
-      length: mesh.indices.count * MemoryLayout<UInt16>.stride,
-      options: .storageModeManaged)
-    else {
-      printErr("Failed to create index buffer")
-      return nil
-    }
-    return .init(_vertBuf: vtxBuffer, _idxBuf: idxBuffer, numIndices: mesh.indices.count)
+    return self.createMesh(vertices, mesh.indices)
   }
 
-  static func loadTexture(_ device: MTLDevice, _ queue: MTLCommandQueue, resourcePath path: String) throws -> MTLTexture {
+  private func createMesh(_ vertices: [ShaderVertex], _ indices: [UInt16]) -> RendererMesh? {
+    autoreleasepool {
+      let vtxSize = vertices.count * MemoryLayout<ShaderVertex>.stride
+      guard let vtxSource = self.device.makeBuffer(bytes: vertices, length: vtxSize, options: self._defaultStorage) else {
+        printErr("Failed to create vertex buffer source")
+        return nil
+      }
+
+      let numIndices = indices.count
+      let idxSize = numIndices * MemoryLayout<UInt16>.stride
+      guard let idxSource = self.device.makeBuffer(bytes: indices, length: idxSize, options: self._defaultStorage) else {
+        printErr("Failed to create index buffer source")
+        return nil
+      }
+
+      guard let vtxDestination = self.device.makeBuffer(length: vtxSize, options: .storageModePrivate) else {
+        printErr("Failed to create vertex buffer destination")
+        return nil
+      }
+      guard let idxDestination = self.device.makeBuffer(length: idxSize, options: .storageModePrivate) else {
+        printErr("Failed to create index buffer destination")
+        return nil
+      }
+
+      guard let cmdBuffer = queue.makeCommandBuffer(),
+        let blitEncoder = cmdBuffer.makeBlitCommandEncoder()
+      else {
+        printErr("Failed to create blit command encoder")
+        return nil
+      }
+
+      blitEncoder.copy(from: vtxSource, sourceOffset: 0, to: vtxDestination, destinationOffset: 0, size: vtxSize)
+      blitEncoder.copy(from: idxSource, sourceOffset: 0, to: idxDestination, destinationOffset: 0, size: idxSize)
+      blitEncoder.endEncoding()
+
+      cmdBuffer.addCompletedHandler { _ in
+        //FIXME: look into if this needs to be synchronised
+        //printErr("Mesh data was added?")
+      }
+      cmdBuffer.commit()
+
+      return .init(_vertBuf: vtxDestination, _idxBuf: idxDestination, numIndices: numIndices)
+    }
+  }
+
+  static func loadTexture(_ device: MTLDevice, _ queue: MTLCommandQueue, resourcePath path: String,
+    _ transitoryOpt: MTLResourceOptions
+  ) throws -> MTLTexture {
     do {
-      return try loadTexture(device, queue, url: Bundle.main.getResource(path))
+      return try loadTexture(device, queue, url: Bundle.main.getResource(path), transitoryOpt)
     } catch ContentError.resourceNotFound(let message) {
       throw RendererError.loadFailure(message)
     }
   }
 
-  static func loadTexture(_ device: MTLDevice, _ queue: MTLCommandQueue, url imageUrl: URL) throws -> MTLTexture {
+  static func loadTexture(_ device: MTLDevice, _ queue: MTLCommandQueue, url imageUrl: URL,
+    _ transitoryOpt: MTLResourceOptions
+  ) throws -> MTLTexture {
     do {
-      return try loadTexture(device, queue, image2D: try NSImageLoader.open(url: imageUrl))
+      return try loadTexture(device, queue, image2D: try NSImageLoader.open(url: imageUrl), transitoryOpt)
     } catch ImageLoaderError.openFailed(let message) {
       throw RendererError.loadFailure(message)
     }
   }
 
-  static func loadTexture(_ device: MTLDevice, _ queue: MTLCommandQueue, image2D image: Image2D) throws -> MTLTexture {
+  static func loadTexture(_ device: MTLDevice, _ queue: MTLCommandQueue, image2D image: Image2D,
+    _ transitoryOpt: MTLResourceOptions
+  ) throws -> MTLTexture {
     try autoreleasepool {
       let texDesc = MTLTextureDescriptor()
       texDesc.width  = image.width
@@ -218,7 +245,7 @@ public class Renderer {
       }
 
       guard let texData = image.data.withUnsafeBytes({ bytes in
-        device.makeBuffer(bytes: bytes.baseAddress!, length: bytes.count, options: [ .storageModeShared ])
+        device.makeBuffer(bytes: bytes.baseAddress!, length: bytes.count, options: transitoryOpt)
       }) else {
         throw RendererError.loadFailure("Failed to create shared texture data buffer")
       }
