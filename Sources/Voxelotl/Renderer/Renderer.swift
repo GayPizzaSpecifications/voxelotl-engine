@@ -141,7 +141,7 @@ public class Renderer {
     if mesh.vertices.isEmpty || mesh.indices.isEmpty { return nil }
 
     let vertices = mesh.vertices.map {
-      ShaderVertex(position: $0.position, normal: $0.normal, color: $0.color.reinterpretUShort, texCoord: $0.texCoord)
+      ShaderVertex(position: $0.position, normal: $0.normal, color: $0.color, texCoord: $0.texCoord)
     }
     guard let vtxBuffer = self.device.makeBuffer(
       bytes: vertices,
@@ -165,9 +165,9 @@ public class Renderer {
   func createMesh(_ mesh: Mesh<VertexPositionNormalTexcoord, UInt16>) -> RendererMesh? {
     if mesh.vertices.isEmpty || mesh.indices.isEmpty { return nil }
 
-    let color = Color<Float16>.white.reinterpretUShort
+    let color = Color<Float>.white
     let vertices = mesh.vertices.map {
-      ShaderVertex(position: $0.position, normal: $0.normal, color: color, texCoord: $0.texCoord)
+      ShaderVertex(position: $0.position, normal: $0.normal, color: SIMD4(color), texCoord: $0.texCoord)
     }
     guard let vtxBuffer = self.device.makeBuffer(
       bytes: vertices,
@@ -341,21 +341,21 @@ public class Renderer {
     }
   }
 
-  func draw(model: matrix_float4x4, color: Color<Float16>, mesh: RendererMesh, material: Material, environment: Environment, camera: Camera) {
+  func draw(model: matrix_float4x4, color: Color<Float>, mesh: RendererMesh, material: Material, environment: Environment, camera: Camera) {
     assert(self._encoder != nil, "draw can't be called outside of a frame being rendered")
 
     var vertUniforms = VertexShaderUniforms(projView: camera.viewProjection)
     var fragUniforms = FragmentShaderUniforms(
       cameraPosition: camera.position,
       directionalLight: normalize(environment.lightDirection),
-      ambientColor:  material.ambient.reinterpretUShort,
-      diffuseColor:  material.diffuse.reinterpretUShort,
-      specularColor: material.specular.reinterpretUShort,
+      ambientColor:  SIMD4(material.ambient),
+      diffuseColor:  SIMD4(material.diffuse),
+      specularColor: SIMD4(material.specular),
       specularIntensity: material.gloss)
     var instance = VertexShaderInstance(
       model:       model,
       normalModel: model.inverse.transpose,
-      color:       color.reinterpretUShort)
+      color:       SIMD4(color))
 
     self._encoder.setCullMode(.init(environment.cullFace))
 
@@ -386,9 +386,9 @@ public class Renderer {
     var fragUniforms = FragmentShaderUniforms(
       cameraPosition: camera.position,
       directionalLight: normalize(environment.lightDirection),
-      ambientColor:  material.ambient.reinterpretUShort,
-      diffuseColor:  material.diffuse.reinterpretUShort,
-      specularColor: material.specular.reinterpretUShort,
+      ambientColor:  SIMD4(material.ambient),
+      diffuseColor:  SIMD4(material.diffuse),
+      specularColor: SIMD4(material.specular),
       specularIntensity: material.gloss)
 
     let numInstances = instances.count
@@ -417,7 +417,7 @@ public class Renderer {
           .scale(instance.scale)
         data[i] = VertexShaderInstance(
           model: model, normalModel: model.inverse.transpose,
-          color: instance.color.reinterpretUShort)
+          color: SIMD4(instance.color))
       }
     }
     instanceBuffer.didModifyRange(0..<instancesBytes)
@@ -465,17 +465,6 @@ fileprivate extension MTLCullMode {
     case .front: .front
     case .back: .back
     }
-  }
-}
-
-fileprivate extension Color where T == Float16 {
-  var reinterpretUShort: SIMD4<UInt16> {
-    .init(self.r.bitPattern, self.g.bitPattern, self.b.bitPattern, self.a.bitPattern)
-  }
-}
-fileprivate extension SIMD4 where Scalar == Float16 {
-  var reinterpretUShort: SIMD4<UInt16> {
-    .init(self.x.bitPattern, self.y.bitPattern, self.z.bitPattern, self.w.bitPattern)
   }
 }
 

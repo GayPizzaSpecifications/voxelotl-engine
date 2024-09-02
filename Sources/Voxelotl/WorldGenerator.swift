@@ -26,9 +26,9 @@ struct WorldGenerator {
           + self.noise.get(fpos * 0.30) * 0.23
       return if value < threshold {
         .solid(.init(
-          hue:        Float16(180 + self.noise2.get(fpos * 0.05) * 180),
-          saturation: Float16(0.5 + self.noise2.get(SIMD4(fpos * 0.05, 4)) * 0.5),
-          value:      Float16(0.5 + self.noise2.get(SIMD4(fpos * 0.05, 9)) * 0.5).lerp(0.5, 1)).linear)
+          hue:        Float(180 + self.noise2.get(fpos * 0.05) * 180),
+          saturation: Float(0.5 + self.noise2.get(SIMD4(fpos * 0.05, 4)) * 0.5),
+          value:      Float(0.5 + self.noise2.get(SIMD4(fpos * 0.05, 9)) * 0.5).lerp(0.5, 1)).linear)
       } else {
         .air
       }

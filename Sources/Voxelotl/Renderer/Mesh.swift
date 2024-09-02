@@ -18,6 +18,6 @@ public struct VertexPositionNormalTexcoord: Vertex {
 public struct VertexPositionNormalColorTexcoord: Vertex {
   var position: SIMD3<Float>
   var normal:   SIMD3<Float>
-  var color:    SIMD4<Float16>
+  var color:    SIMD4<Float>
   var texCoord: SIMD2<Float>
 }
