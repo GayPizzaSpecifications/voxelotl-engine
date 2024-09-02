@@ -1,4 +1,6 @@
-import Darwin
+import Foundation
+
+Thread.current.qualityOfService = .userInteractive
 
 let app = Application(
   delegate: Game(),
