@@ -66,7 +66,10 @@ add_executable(Voxelotl MACOSX_BUNDLE
   GameDelegate.swift
   Application.swift
 
-  main.swift)
+  # Entry point
+  Program.swift
+  main.m
+)
 
 set_source_files_properties(
   shader.metal PROPERTIES
@@ -103,7 +106,7 @@ set_source_files_properties(test.png PROPERTIES MACOSX_PACKAGE_LOCATION Resource
 
 #TODO: should use TREE mode as documented in https://cmake.org/cmake/help/latest/command/source_group.html
 source_group("Resources" FILES Assets.xcassets test.png)
-source_group("Source Files" REGULAR_EXPRESSION "\\.(swift|metal)$")
+source_group("Source Files" REGULAR_EXPRESSION "\\.(swift|metal|m)$")
 source_group("Source Files\\Common" REGULAR_EXPRESSION "Common/")
 source_group("Source Files\\Random" REGULAR_EXPRESSION "Random/")
 source_group("Source Files\\Noise" REGULAR_EXPRESSION "Noise/")
