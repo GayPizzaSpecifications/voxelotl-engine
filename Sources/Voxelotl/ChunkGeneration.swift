@@ -37,10 +37,15 @@ public struct ChunkGeneration {
       return
     }
     let centerChunkID = World.makeID(position: position)
-    for offset in ChunkGeneration.chunkGenerateNeighbors {
-      let chunkID = centerChunkID &+ offset
-      if world.getChunk(id: chunkID) == nil {
-        self.generate(chunkID: chunkID)
+    let range = -2...2
+    for z in range {
+      for y in range {
+        for x in range {
+          let chunkID = centerChunkID &+ SIMD3(x, y, z)
+          if world.getChunk(id: chunkID) == nil {
+            self.generate(chunkID: chunkID)
+          }
+        }
       }
     }
   }
@@ -59,34 +64,4 @@ public struct ChunkGeneration {
       self.generatingChunkSet.remove(chunkID)
     }
   }
-
-  private static let chunkGenerateNeighbors: [SIMD3<Int>] = [
-      SIMD3<Int>(-1, -1, -1),
-      SIMD3<Int>(0, -1, -1),
-      SIMD3<Int>(1, -1, -1),
-      SIMD3<Int>(-1, 0, -1),
-      SIMD3<Int>(0, 0, -1),
-      SIMD3<Int>(1, 0, -1),
-      SIMD3<Int>(-1, 1, -1),
-      SIMD3<Int>(0, 1, -1),
-      SIMD3<Int>(1, 1, -1),
-      SIMD3<Int>(-1, -1, 0),
-      SIMD3<Int>(0, -1, 0),
-      SIMD3<Int>(1, -1, 0),
-      SIMD3<Int>(-1, 0, 0),
-      SIMD3<Int>(0, 0, 0),
-      SIMD3<Int>(1, 0, 0),
-      SIMD3<Int>(-1, 1, 0),
-      SIMD3<Int>(0, 1, 0),
-      SIMD3<Int>(1, 1, 0),
-      SIMD3<Int>(-1, -1, 1),
-      SIMD3<Int>(0, -1, 1),
-      SIMD3<Int>(1, -1, 1),
-      SIMD3<Int>(-1, 0, 1),
-      SIMD3<Int>(0, 0, 1),
-      SIMD3<Int>(1, 0, 1),
-      SIMD3<Int>(-1, 1, 1),
-      SIMD3<Int>(0, 1, 1),
-      SIMD3<Int>(1, 1, 1),
-    ]
 }
