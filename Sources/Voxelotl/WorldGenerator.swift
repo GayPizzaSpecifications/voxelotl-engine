@@ -1,4 +1,9 @@
-struct WorldGenerator {
+protocol WorldGenerator {
+  mutating func reset(seed: UInt64)
+  func makeChunk(id: SIMD3<Int>) -> Chunk
+}
+
+struct StandardWorldGenerator: WorldGenerator {
   var noise: ImprovedPerlin<Float>!, noise2: SimplexNoise<Float>!
 
   public mutating func reset(seed: UInt64) {

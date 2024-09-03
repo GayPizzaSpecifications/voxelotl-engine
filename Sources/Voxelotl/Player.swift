@@ -8,7 +8,7 @@ struct Player {
     to: .init(Self.radius, Self.height, Self.radius))
 
   static let eyeLevel: Float = 1.4
-  static let epsilon = Float.ulpOfOne * 20
+  static let epsilon = Float.ulpOfOne * 2000
 
   static let accelerationCoeff: Float = 75
   static let airAccelCoeff: Float = 3

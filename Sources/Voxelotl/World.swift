@@ -10,11 +10,14 @@ public class World {
   private var _chunks: Dictionary<ChunkID, Chunk>
   private var _chunkDamage: Set<ChunkID>
   private var _generator: WorldGenerator
+  private var _chunkGeneration: ChunkGeneration
 
   public init() {
     self._chunks = [:]
     self._chunkDamage = []
-    self._generator = WorldGenerator()
+    self._generator = StandardWorldGenerator()
+    self._chunkGeneration = ChunkGeneration(queue: .global(qos: .userInitiated))
+    self._chunkGeneration.world = self
   }
 
   func getBlock(at position: SIMD3<Int>) -> Block {
@@ -69,29 +72,26 @@ public class World {
     self._generator.reset(seed: seed)
     let orig = SIMD3(width, height, depth) / 2
 
-    let localChunks = ConcurrentDictionary<ChunkID, Chunk>()
-    let queue = OperationQueue()
-    queue.qualityOfService = .userInitiated
     for z in 0..<depth {
       for y in 0..<height {
         for x in 0..<width {
           let chunkID = SIMD3(x, y, z) &- orig
-          queue.addOperation {
-            let chunk = self._generator.makeChunk(id: chunkID)
-            localChunks[chunkID] = chunk
-          }
+          self._chunkGeneration.generate(chunkID: chunkID)
         }
       }
     }
-    queue.waitUntilAllOperationsAreFinished()
-    for (chunkID, chunk) in localChunks {
-      self._chunks[chunkID] = chunk
-      self._chunkDamage.insert(chunkID)
-    }
   }
 
-  func generate(chunkID: ChunkID) {
-    self._chunks[chunkID] = self._generator.makeChunk(id: chunkID)
+  func generateSingleChunkUncommitted(chunkID: SIMD3<Int>) -> Chunk {
+    self._generator.makeChunk(id: chunkID)
+  }
+
+  public func generateAdjacentChunksIfNeeded(position: SIMD3<Float>) {
+    self._chunkGeneration.generateAdjacentIfNeeded(position: position)
+  }
+
+  public func addChunk(chunkID: ChunkID, chunk: Chunk) {
+    self._chunks[chunkID] = chunk
     self._chunkDamage.insert(chunkID)
     for i: ChunkID in [ .X, .Y, .Z ] {
       for otherID in [ chunkID &- i, chunkID &+ i ] {
@@ -100,6 +100,10 @@ public class World {
         }
       }
     }
+  }
+
+  public func update() {
+    self._chunkGeneration.acceptReadyChunks()
   }
 
   func handleRenderDamagedChunks(_ body: (_ id: ChunkID, _ chunk: Chunk) -> Void) {

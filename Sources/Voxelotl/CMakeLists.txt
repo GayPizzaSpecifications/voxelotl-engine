@@ -53,6 +53,7 @@ add_executable(Voxelotl MACOSX_BUNDLE
 
   # Game logic classes
   Chunk.swift
+  ChunkGeneration.swift
   WorldGenerator.swift
   CubeMeshBuilder.swift
   ChunkMeshBuilder.swift

@@ -62,6 +62,14 @@ public class ConcurrentDictionary<V: Hashable, T>: Collection {
       }
   }
 
+  public func take() -> Dictionary<V, T> {
+    self.locked {
+      let current = self.inner
+      self.inner = [:]
+      return current
+    }
+  }
+
   fileprivate func locked<X>(_ perform: () -> X) -> X {
     self.lock.lock()
     defer {

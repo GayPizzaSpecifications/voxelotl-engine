@@ -87,8 +87,13 @@ class Game: GameDelegate {
 
     // Regenerate current chunk
     if regenChunk {
-      self.world.generate(chunkID: World.makeID(position: self.player.position))
+      let chunkID = World.makeID(position: self.player.position)
+      let chunk = self.world.generateSingleChunkUncommitted(chunkID: chunkID)
+      self.world.addChunk(chunkID: chunkID, chunk: chunk)
     }
+
+    self.world.generateAdjacentChunksIfNeeded(position: self.player.position)
+    self.world.update()
   }
 
   func draw(_ renderer: Renderer, _ time: GameTime) {
