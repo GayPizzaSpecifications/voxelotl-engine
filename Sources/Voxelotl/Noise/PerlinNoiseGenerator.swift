@@ -1,18 +1,22 @@
 import Foundation
 
-public struct ImprovedPerlin<T: BinaryFloatingPoint & SIMDScalar>: CoherentNoise2D, CoherentNoise3D {
+public struct ImprovedPerlin<Scalar: BinaryFloatingPoint & SIMDScalar>: CoherentNoise2D, CoherentNoise3D, CoherentNoiseRandomInit {
   private let p: [Int16]
+
+  public init() {
+    self.init(permutation: defaultPermutation)
+  }
 
   public init(permutation: [Int16]) {
     assert(permutation.count == 0x100)
     self.p = permutation
   }
 
-  public init(random: inout any RandomProvider) {
+  public init<Random: RandomProvider>(random: inout Random) {
     self.p = (0..<0x100).map { Int16($0) }.shuffled(using: &random)
   }
 
-  public func get(_ point: SIMD2<T>) -> T {
+  public func get(_ point: SIMD2<Scalar>) -> Scalar {
     // Find unit square
     let idx = SIMD2(Int(floor(point.x)), Int(floor(point.y))) & 0xFF
     // Find relative point in square
@@ -37,7 +41,7 @@ public struct ImprovedPerlin<T: BinaryFloatingPoint & SIMDScalar>: CoherentNoise
         grad(perm(bb), inner - .init(repeating: 1))))
   }
 
-  public func get(_ point: SIMD3<T>) -> T {
+  public func get(_ point: SIMD3<Scalar>) -> Scalar {
     // Find unit cube containg point
     let idx = SIMD3(Int(floor(point.x)), Int(floor(point.y)), Int(floor(point.z))) & 0xFF
     // Find relative point in cube
@@ -74,9 +78,9 @@ public struct ImprovedPerlin<T: BinaryFloatingPoint & SIMDScalar>: CoherentNoise
 
   @inline(__always) fileprivate func perm(_ x: Int) -> Int { Int(self.p[x & 0xFF]) }
 
-  @inline(__always) fileprivate func grad(_ hash: Int, _ point: SIMD2<T>) -> T { grad(hash, SIMD3(point, 0)) }
+  @inline(__always) fileprivate func grad(_ hash: Int, _ point: SIMD2<Scalar>) -> Scalar { grad(hash, SIMD3(point, 0)) }
 
-  fileprivate func grad(_ hash: Int, _ point: SIMD3<T>) -> T {
+  fileprivate func grad(_ hash: Int, _ point: SIMD3<Scalar>) -> Scalar {
     // Convert low 4 bits of hash code into 12 gradient directions
     let low4 = hash & 0xF
     var u = low4 < 8 ? point.x : point.y
@@ -86,3 +90,19 @@ public struct ImprovedPerlin<T: BinaryFloatingPoint & SIMDScalar>: CoherentNoise
     return u + v
   }
 }
+
+internal let defaultPermutation: [Int16] = [
+  151,160,137,91,90,15,131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,
+  8, 99,37,240,21,10,23,190, 6,148,247,120,234,75, 0,26,197,62,94,252,219,203,
+  117,35, 11,32,57,177,33, 88,237,149,56,87,174,20,125,136,171,168, 68,175,74,
+  165,71,134,139,48, 27,166,77,146,158,231,83,111,229,122, 60,211,133,230,220,
+  105,92,41,55,46,245,40,244,102,143,54, 65,25,63,161, 1,216,80,73,209,76,132,
+  187,208, 89, 18,169,200,196,135,130,116,188,159, 86,164,100,109,198,173,186,
+  3,64,52,217,226,250,124,123, 5,202, 38,147,118,126,255,82,85,212,207,206,59,
+  227,47,16,58,17,182,189,28,42,223,183,170,213,119,248,152, 2,44,154,163, 70,
+  221,153,101,155,167, 43,172,9,129,22,39,253, 19, 98,108,110, 79,113,224,232,
+  178,185, 112,104,218,246,97,228,251, 34,242,193,238,210,144, 12,191,179,162,
+  241, 81,51,145,235,249,14,239,107,49,192,214, 31,181,199,106,157,184,84,204,
+  176,115,121,50,45,127, 4,150,254,138,236,205,93,222,114,67,29,24,72,243,141,
+  128,195,78,66,215,61,156,180
+]

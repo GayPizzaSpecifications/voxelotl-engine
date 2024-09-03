@@ -1,14 +1,14 @@
 import Foundation
 
-public struct SimplexNoise<T: BinaryFloatingPoint & SIMDScalar>: CoherentNoise2D, CoherentNoise3D, CoherentNoise4D {
+public struct SimplexNoise<Scalar: BinaryFloatingPoint & SIMDScalar>: CoherentNoise2D, CoherentNoise3D, CoherentNoise4D, CoherentNoiseRandomInit {
   private let p: [Int16], pMod12: [Int16]
 
-  private let grad3: [SIMD3<T>] = [
+  private let grad3: [SIMD3<Scalar>] = [
     .init(1, 1, 0), .init(-1,  1, 0), .init(1, -1,  0), .init(-1, -1,  0),
     .init(1, 0, 1), .init(-1,  0, 1), .init(1,  0, -1), .init(-1,  0, -1),
     .init(0, 1, 1), .init( 0, -1, 1), .init(0,  1, -1), .init( 0, -1, -1)
   ]
-  private let grad4: [SIMD4<T>] = [
+  private let grad4: [SIMD4<Scalar>] = [
     .init( 0,  1, 1, 1), .init( 0,  1,  1, -1), .init( 0,  1, -1, 1), .init( 0,  1, -1, -1),
     .init( 0, -1, 1, 1), .init( 0, -1,  1, -1), .init( 0, -1, -1, 1), .init( 0, -1, -1, -1),
     .init( 1,  0, 1, 1), .init( 1,  0,  1, -1), .init( 1,  0, -1, 1), .init( 1,  0, -1, -1),
@@ -19,21 +19,25 @@ public struct SimplexNoise<T: BinaryFloatingPoint & SIMDScalar>: CoherentNoise2D
     .init(-1,  1, 1, 0), .init(-1,  1, -1,  0), .init(-1, -1,  1, 0), .init(-1, -1, -1,  0)
   ]
 
+  public init() {
+    self.init(permutation: defaultPermutation)
+  }
+
   public init(permutation: [Int16]) {
     assert(permutation.count == 0x100)
     self.p = permutation
     self.pMod12 = self.p.map { $0 % 12 }
   }
 
-  public init(random: inout any RandomProvider) {
+  public init<Random: RandomProvider>(random: inout Random) {
     self.p = (0..<0x100).map { Int16($0) }.shuffled(using: &random)
     self.pMod12 = self.p.map { $0 % 12 }
   }
 
-  public func get(_ point: SIMD2<T>) -> T {
+  public func get(_ point: SIMD2<Scalar>) -> Scalar {
     // Skew space into rhobuses to find which simplex cell we're in
-    let f2 = 0.5 * (T(3).squareRoot() - 1)
-    let g2 = (3 - T(3).squareRoot()) / 6
+    let f2 = 0.5 * (Scalar(3).squareRoot() - 1)
+    let g2 = (3 - Scalar(3).squareRoot()) / 6
     let skewFactor = point.sum() * f2
     let cellID = SIMD2(floor(point.x + skewFactor), floor(point.y + skewFactor))
     let cellOrigin = cellID - (cellID.sum() * g2)
@@ -42,7 +46,7 @@ public struct SimplexNoise<T: BinaryFloatingPoint & SIMDScalar>: CoherentNoise2D
     // For the 2d case, the simplex shape is an equilateral triangle
     // Determine which side of the rhombus on to find the simplex
     let cornerOfs1: SIMD2<Int> = corner0.x > corner0.y ? .init(1, 0) : .init(0, 1)
-    let corner1 = corner0 - SIMD2<T>(cornerOfs1) + g2
+    let corner1 = corner0 - SIMD2<Scalar>(cornerOfs1) + g2
     let corner2 = corner0 - 1 + 2 * g2
 
     // Compute the hashed gradient indices of the three simplex corners
@@ -52,7 +56,7 @@ public struct SimplexNoise<T: BinaryFloatingPoint & SIMDScalar>: CoherentNoise2D
     let gradIndex2 = permMod12(cellHash.x + 1 + perm(cellHash.y + 1))
 
     // Calculate the contribution from the three corners
-    @inline(__always) func cornerContribution(_ corner: SIMD2<T>, _ gradID: Int) -> T {
+    @inline(__always) func cornerContribution(_ corner: SIMD2<Scalar>, _ gradID: Int) -> Scalar {
       var t = 0.5 - corner.x * corner.x - corner.y * corner.y
       if t < 0 {
         return 0
@@ -68,9 +72,9 @@ public struct SimplexNoise<T: BinaryFloatingPoint & SIMDScalar>: CoherentNoise2D
     return 70 * (noise0 + noise1 + noise2)
   }
 
-  public func get(_ point: SIMD3<T>) -> T {
+  public func get(_ point: SIMD3<Scalar>) -> Scalar {
     // Skew space into rhombohedrons to find which simplex cell we're in
-    let g3 = 1 / T(6), f3 = 1 / T(3)
+    let g3 = 1 / Scalar(6), f3 = 1 / Scalar(3)
     let skewFactor = point.sum() * f3
     let cellID = SIMD3(floor(point.x + skewFactor), floor(point.y + skewFactor), floor(point.z + skewFactor))
     let cellOrigin = cellID - (cellID.sum() * g3)
@@ -95,8 +99,8 @@ public struct SimplexNoise<T: BinaryFloatingPoint & SIMDScalar>: CoherentNoise2D
         (.init(0, 1, 0), .init(1, 1, 0))  // Y X Z
       }
     }
-    let corner1 = corner0 - SIMD3<T>(corner1ID) + g3
-    let corner2 = corner0 - SIMD3<T>(corner2ID) + 2 * g3
+    let corner1 = corner0 - SIMD3<Scalar>(corner1ID) + g3
+    let corner2 = corner0 - SIMD3<Scalar>(corner2ID) + 2 * g3
     let corner3 = corner0 - 1 + 3 * g3
 
     // Compute the hashed gradient indices of the four simplex corners
@@ -119,7 +123,7 @@ public struct SimplexNoise<T: BinaryFloatingPoint & SIMDScalar>: CoherentNoise2D
           cellHash.z + 1)))
 
     // Calculate the contribution from the four corners
-    @inline(__always) func cornerContribution(_ corner: SIMD3<T>, _ gradID: Int) -> T {
+    @inline(__always) func cornerContribution(_ corner: SIMD3<Scalar>, _ gradID: Int) -> Scalar {
       var t = 0.6 - corner.x * corner.x - corner.y * corner.y - corner.z * corner.z
       if t < 0 {
         return 0
@@ -136,8 +140,8 @@ public struct SimplexNoise<T: BinaryFloatingPoint & SIMDScalar>: CoherentNoise2D
     return 32 * (noise0 + noise1 + noise2 + noise3)
   }
 
-  public func get(_ point: SIMD4<T>) -> T {
-    let g4 = (5 - T(5).squareRoot()) / 20, f4 = (T(5).squareRoot() - 1) / 4
+  public func get(_ point: SIMD4<Scalar>) -> Scalar {
+    let g4 = (5 - Scalar(5).squareRoot()) / 20, f4 = (Scalar(5).squareRoot() - 1) / 4
     let skewFactor = point.sum() * f4
     let cellID = SIMD4(floor(point.x + skewFactor), floor(point.y + skewFactor), floor(point.z + skewFactor), floor(point.w + skewFactor))
     let cellOrigin = cellID - (cellID.sum() * g4)
@@ -157,9 +161,9 @@ public struct SimplexNoise<T: BinaryFloatingPoint & SIMDScalar>: CoherentNoise2D
     let cornerOfs1 = SIMD4<Int>.zero.replacing(with: .one, where: rank .>= 3)
     let cornerOfs2 = SIMD4<Int>.zero.replacing(with: .one, where: rank .>= 2)
     let cornerOfs3 = SIMD4<Int>.zero.replacing(with: .one, where: rank .>= 1)
-    let corner1 = corner0 - SIMD4<T>(cornerOfs1) + g4
-    let corner2 = corner0 - SIMD4<T>(cornerOfs2) + 2 * g4
-    let corner3 = corner0 - SIMD4<T>(cornerOfs3) + 3 * g4
+    let corner1 = corner0 - SIMD4<Scalar>(cornerOfs1) + g4
+    let corner2 = corner0 - SIMD4<Scalar>(cornerOfs2) + 2 * g4
+    let corner3 = corner0 - SIMD4<Scalar>(cornerOfs3) + 3 * g4
     let corner4 = corner0 - 1 + 4 * g4
 
     // Compute the hashed gradient indices of the five simplex corners
@@ -191,7 +195,7 @@ public struct SimplexNoise<T: BinaryFloatingPoint & SIMDScalar>: CoherentNoise2D
             cellHash.w + 1))))) & 0x1F
 
     // Calculate the contribution from the five corners
-    @inline(__always) func cornerContribution(_ corner: SIMD4<T>, _ gradID: Int) -> T {
+    @inline(__always) func cornerContribution(_ corner: SIMD4<Scalar>, _ gradID: Int) -> Scalar {
       var t = corner.indices.reduce(0.6) { accum, i in accum - corner[i] * corner[i] }
       if t < 0 {
         return 0

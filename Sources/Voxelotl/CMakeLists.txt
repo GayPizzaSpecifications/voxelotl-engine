@@ -36,6 +36,7 @@ add_executable(Voxelotl MACOSX_BUNDLE
   Noise/CoherentNoise.swift
   Noise/PerlinNoiseGenerator.swift
   Noise/SimplexNoise.swift
+  Noise/LayeredNoise.swift
 
   # Resource classes
   Resource/NSImageLoader.swift
@@ -51,11 +52,15 @@ add_executable(Voxelotl MACOSX_BUNDLE
   Input/GameController.swift
   Input/Mouse.swift
 
+  # Worldgens
+  Generator/WorldGenerator.swift
+  Generator/StandardWorldGenerator.swift
+  Generator/TerrorTowerGenerator.swift
+
   # Game logic classes
   Chunk.swift
   ChunkGeneration.swift
   ChunkMeshGeneration.swift
-  WorldGenerator.swift
   CubeMeshBuilder.swift
   ChunkMeshBuilder.swift
   World.swift
@@ -132,3 +137,4 @@ source_group("Source Files\\Noise" REGULAR_EXPRESSION "Noise/")
 source_group("Source Files\\Math" REGULAR_EXPRESSION "Math/")
 source_group("Source Files\\Input" REGULAR_EXPRESSION "Input/")
 source_group("Source Files\\Renderer" REGULAR_EXPRESSION "Renderer/")
+source_group("Source Files\\Generator" REGULAR_EXPRESSION "Generator/")

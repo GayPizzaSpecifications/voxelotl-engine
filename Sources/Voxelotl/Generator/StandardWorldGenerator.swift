@@ -1,8 +1,3 @@
-protocol WorldGenerator {
-  mutating func reset(seed: UInt64)
-  func makeChunk(id: SIMD3<Int>) -> Chunk
-}
-
 struct StandardWorldGenerator: WorldGenerator {
   var noise: ImprovedPerlin<Float>!, noise2: SimplexNoise<Float>!
 
@@ -25,7 +20,7 @@ struct StandardWorldGenerator: WorldGenerator {
     chunk.fill(allBy: { position in
       let fpos = SIMD3<Float>(position)
         let threshold: Float = 0.6
-        let value = fpos.y / Float(Chunk.size)
+        let value = fpos.y / 16.0
           + self.noise.get(fpos * 0.05) * 1.1
           + self.noise.get(fpos * 0.10) * 0.5
           + self.noise.get(fpos * 0.30) * 0.23
@@ -39,13 +34,5 @@ struct StandardWorldGenerator: WorldGenerator {
       }
     })
     return chunk
-  }
-}
-
-fileprivate extension RandomProvider where Output == UInt64, Self: RandomSeedable, SeedType == UInt64 {
-  static func createState(seed value: UInt64) -> (UInt64, UInt64) {
-    var hash = Self(seed: value)
-    let state = (hash.next(), hash.next())
-    return state
   }
 }

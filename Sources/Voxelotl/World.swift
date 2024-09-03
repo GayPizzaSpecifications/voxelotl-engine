@@ -15,7 +15,7 @@ public class World {
   public init() {
     self._chunks = [:]
     self._chunkDamage = []
-    self._generator = StandardWorldGenerator()
+    self._generator = TerrorTowerGenerator()
     self._chunkGeneration = ChunkGeneration(queue: .global(qos: .userInitiated))
     self._chunkGeneration.world = self
   }
