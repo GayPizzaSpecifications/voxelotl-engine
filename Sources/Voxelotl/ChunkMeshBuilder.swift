@@ -7,7 +7,8 @@ struct ChunkMeshBuilder {
         for side in [ Side.left, .right, .down, .up, .back, .front ] {
           let globalPos = chunk.origin &+ position
           if case .air = world.getBlock(at: globalPos.offset(by: side)).type {
-            let orig = UInt16(vertices.count)
+            //FIXME: use 32 bit indices for really big chunks
+            let orig = UInt16(truncatingIfNeeded: vertices.count)
             vertices.append(contentsOf: cubeVertices[side]!.map {
               .init(
                 position: SIMD3(position) + $0.position,
