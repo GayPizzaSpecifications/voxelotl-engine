@@ -52,7 +52,7 @@ public struct AABB {
 }
 
 public extension AABB {
-  public static func + (lhs: Self, rhs: SIMD3<Float>) -> Self {
+  static func + (lhs: Self, rhs: SIMD3<Float>) -> Self {
     .init(bounds: lhs._bounds + .init(rhs, rhs))
   }
 }

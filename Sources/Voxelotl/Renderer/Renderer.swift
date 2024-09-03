@@ -40,12 +40,16 @@ public class Renderer {
   }
 
   fileprivate static func createMetalDevice() -> MTLDevice? {
+#if os(macOS)
     MTLCopyAllDevices().reduce(nil, { best, dev in
       if best == nil { dev }
       else if !best!.isLowPower || dev.isLowPower { best }
       else if best!.supportsRaytracing || !dev.supportsRaytracing { best }
       else { dev }
     })
+#else
+    MTLCreateSystemDefaultDevice()
+#endif
   }
 
   internal init(layer metalLayer: CAMetalLayer, size: Size<Int>) throws {
@@ -56,6 +60,7 @@ public class Renderer {
       throw RendererError.initFailure("Failed to create Metal device")
     }
     self.device = device
+#if os(macOS)
     self._defaultStorageMode = if #available(macOS 100.100, iOS 12.0, *) {
       .storageModeShared
     } else if #available(macOS 10.15, iOS 13.0, *) {
@@ -64,6 +69,9 @@ public class Renderer {
       // https://developer.apple.com/documentation/metal/gpu_devices_and_work_submission/multi-gpu_systems/finding_multiple_gpus_on_an_intel-based_mac#3030770
       (self.device.isLowPower && !self.device.isRemovable) ? .storageModeShared : .storageModeManaged
     }
+#else
+    self._defaultStorageMode = .storageModeShared
+#endif
 
     layer.device = device
     layer.pixelFormat = colorFormat

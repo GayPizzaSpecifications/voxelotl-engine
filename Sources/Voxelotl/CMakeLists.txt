@@ -80,6 +80,15 @@ set_source_files_properties(
 target_include_directories(Voxelotl PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(Voxelotl PRIVATE SDLSwift)
 target_compile_definitions(Voxelotl PRIVATE $<$<CONFIG:Debug>:DEBUG>)
+
+if(VOXELOTL_MOBILE_ENABLED)
+  set(VOXELOTL_APPICON "AppIconMobile")
+  set(VOXELOTL_RPATH "@loader_path/Frameworks")
+else()
+  set(VOXELOTL_APPICON "AppIcon")
+  set(VOXELOTL_RPATH "@loader_path/../Frameworks")
+endif()
+
 set_target_properties(Voxelotl PROPERTIES
   XCODE_ATTRIBUTE_ENABLE_HARDENED_RUNTIME YES
   XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "gay.pizza.voxelotl"
@@ -91,14 +100,22 @@ set_target_properties(Voxelotl PROPERTIES
   MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION}"
   MACOSX_BUNDLE_GUI_IDENTIFIER "gay.pizza.voxelotl"
   MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/Info.plist.in"
-  XCODE_ATTRIBUTE_ASSETCATALOG_COMPILER_APPICON_NAME "AppIcon"
-  BUILD_RPATH "@loader_path/../Frameworks"
+  XCODE_ATTRIBUTE_ASSETCATALOG_COMPILER_APPICON_NAME "${VOXELOTL_APPICON}"
+  BUILD_RPATH "${VOXELOTL_RPATH}"
   XCODE_ATTRIBUTE_SKIP_INSTALL "NO"
   XCODE_ATTRIBUTE_INSTALL_PATH "$(LOCAL_APPS_DIR)"
   XCODE_GENERATE_SCHEME ON
   XCODE_SCHEME_ENABLE_GPU_FRAME_CAPTURE_MODE "Metal"
   XCODE_ATTRIBUTE_CODE_SIGN_ENTITLEMENTS "${CMAKE_CURRENT_SOURCE_DIR}/Voxelotl.entitlements"
   MACOSX_BUNDLE_COPYRIGHT "© 2024 Gay Pizza Specifications")
+
+if(VOXELOTL_MOBILE_ENABLED)
+  set_target_properties(Voxelotl PROPERTIES
+    XCODE_ATTRIBUTE_CODE_SIGNING_REQUIRED "YES"
+    XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED "YES"
+    XCODE_ATTRIBUTE_TARGETED_DEVICE_FAMILY "1,2"
+  )
+endif()
 
 set_source_files_properties(Assets.xcassets PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
 set_source_files_properties(module.modulemap PROPERTIES MACOSX_PACKAGE_LOCATION Modules)

@@ -53,7 +53,9 @@ public class Application {
     view = SDL_Metal_CreateView(window)
     do {
       let layer = unsafeBitCast(SDL_Metal_GetLayer(view), to: CAMetalLayer.self)
+#if os(macOS)
       layer.displaySyncEnabled = cfg.vsyncMode == .off ? false : true
+#endif
       self.renderer = try Renderer(layer: layer, size: Size<Int>(backBuffer))
     } catch RendererError.initFailure(let message) {
       printErr("Renderer init error: \(message)")

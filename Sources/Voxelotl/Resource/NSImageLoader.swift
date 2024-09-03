@@ -1,4 +1,9 @@
+#if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
+
 
 struct NSImageLoader {
   private static let flipVertically = true
@@ -6,11 +11,19 @@ struct NSImageLoader {
   static func open(url: URL) throws -> Image2D {
     try autoreleasepool {
       // Open as a CoreGraphics image
+#if os(macOS)
       guard let nsImage = NSImage(contentsOf: url),
         let cgImage = nsImage.cgImage(forProposedRect: nil, context: nil, hints: nil)
       else {
         throw ImageLoaderError.openFailed("Failed to open image \"\(url.absoluteString)\"")
       }
+#else
+      guard let nsImage = UIImage(contentsOfFile: url.path(percentEncoded: false)),
+        let cgImage = nsImage.cgImage
+      else {
+        throw ImageLoaderError.openFailed("Failed to open image \"\(url.absoluteString)\"")
+      }
+#endif
 
       // Convert 8-bit ARGB (sRGB) w/ pre-multiplied alpha
       let alphaInfo = cgImage.alphaInfo == .none
