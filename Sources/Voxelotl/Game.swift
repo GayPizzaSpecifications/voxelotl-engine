@@ -27,6 +27,7 @@ class Game: GameDelegate {
   var world = World()
   var cubeMesh: RendererMesh?
   var renderChunks = [SIMD3<Int>: RendererMesh]()
+  var chunkMeshGeneration: ChunkMeshGeneration!
 
   func create(_ renderer: Renderer) {
     self.resetPlayer()
@@ -35,6 +36,9 @@ class Game: GameDelegate {
     self.cubeMesh = renderer.createMesh(CubeMeshBuilder.build(bound: .fromUnitCube(position: .zero, scale: .one)))
 
     renderer.clearColor = Color<Double>.black.mix(.white, 0.1).linear
+    self.chunkMeshGeneration = .init(queue: .global(qos: .userInitiated))
+    self.chunkMeshGeneration.game = self
+    self.chunkMeshGeneration.renderer = renderer
   }
 
   private func resetPlayer() {
@@ -110,13 +114,9 @@ class Game: GameDelegate {
 
     // Update chunk meshes if needed
     self.world.handleRenderDamagedChunks { id, chunk in
-      let mesh = ChunkMeshBuilder.build(world: self.world, chunkID: id)
-      if let renderMesh = renderer.createMesh(mesh) {
-        self.renderChunks[id] = renderMesh
-      } else {
-        self.renderChunks.removeValue(forKey: id)
-      }
+      self.chunkMeshGeneration.generate(chunkID: id, chunk: chunk)
     }
+    self.chunkMeshGeneration.acceptReadyMeshes()
 
     for (id, chunk) in self.renderChunks {
       let drawPos = SIMD3<Float>(id &<< Chunk.shift)

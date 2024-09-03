@@ -1,7 +1,5 @@
 struct ChunkMeshBuilder {
-  public static func build(world: World, chunkID: SIMD3<Int>) -> Mesh<VertexPositionNormalColorTexcoord, UInt16> {
-    guard let chunk = world.getChunk(id: chunkID) else { return .empty }
-
+  public static func build(world: World, chunk: Chunk) -> Mesh<VertexPositionNormalColorTexcoord, UInt16> {
     var vertices = [VertexPositionNormalColorTexcoord]()
     var indices = [UInt16]()
     chunk.forEach { block, position in
