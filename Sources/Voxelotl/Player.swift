@@ -8,12 +8,13 @@ struct Player {
     to: .init(Self.radius, Self.height, Self.radius))
 
   static let eyeLevel: Float = 1.4
-  static let epsilon = Float.ulpOfOne * 2000
+  static let epsilon = Float.ulpOfOne * 4000
+  static let stepHeight: Float = 0.05
 
-  static let accelerationCoeff: Float = 75
+  static let accelerationCoeff: Float = 86.6
   static let airAccelCoeff: Float = 3
   static let gravityCoeff: Float = 20
-  static let frictionCoeff: Float = 22
+  static let frictionCoeff: Float = 0.7375
   static let flySpeedCoeff: Float = 36
   static let jumpVelocity: Float = 7
   static let maxVelocity: Float = 160
@@ -41,6 +42,164 @@ struct Player {
   }
 
   enum JumpInput { case off, press, held }
+
+  private mutating func tryMove(_ deltaTime: Float, _ world: World, newPosition: SIMD3<Float>) {
+    //let oldPosition = self._position
+
+    func checkCollision(_ world: World, _ position: SIMD3<Float>) -> Optional<AABB> {
+      let bounds = Self.bounds + position
+      let corners: [SIMD3<Float>] = [
+        .init(bounds.left,  bounds.bottom,   bounds.far),
+        .init(bounds.right, bounds.bottom,   bounds.far),
+        .init(bounds.left,  bounds.bottom,   bounds.near),
+        .init(bounds.right, bounds.bottom,   bounds.near),
+        .init(bounds.left,  bounds.center.y, bounds.far),
+        .init(bounds.right, bounds.center.y, bounds.far),
+        .init(bounds.left,  bounds.center.y, bounds.near),
+        .init(bounds.right, bounds.center.y, bounds.near),
+        .init(bounds.left,  bounds.top,      bounds.far),
+        .init(bounds.right, bounds.top,      bounds.far),
+        .init(bounds.left,  bounds.top,      bounds.near),
+        .init(bounds.right, bounds.top,      bounds.near)
+      ]
+      for corner in corners {
+        let blockPos = SIMD3(floor(corner.x), floor(corner.y), floor(corner.z))
+        if case BlockType.solid = world.getBlock(at: SIMD3<Int>(blockPos)).type {
+          let blockGeometry = AABB(from: blockPos, to: blockPos + 1)
+          if bounds.touching(blockGeometry) {
+            return blockGeometry
+          }
+        }
+      }
+      return nil
+    }
+
+    func checkCollisionRaycast(_ world: World, _ position: SIMD3<Float>, top: Bool) -> Optional<RaycastHit> {
+      let dir: SIMD3<Float> = !top ? .down : .up
+      var org = !top ? self._position + .up * Self.height : self._position
+      let max: Float = Self.height + Self.epsilon
+
+      org.x -= Self.radius
+      org.y -= Self.radius
+      if let hit1 = raycast(world: world, origin: org, direction: dir, maxDistance: max) { return hit1 }
+      org.x += Self.radius + Self.radius
+      if let hit2 = raycast(world: world, origin: org, direction: dir, maxDistance: max) { return hit2 }
+      org.x -= Self.radius + Self.radius
+      org.y += Self.radius + Self.radius
+      if let hit3 = raycast(world: world, origin: org, direction: dir, maxDistance: max) { return hit3 }
+      org.x += Self.radius + Self.radius
+      if let hit4 = raycast(world: world, origin: org, direction: dir, maxDistance: max) { return hit4 }
+      return nil
+    }
+
+#if false
+    self._position.y = newPosition.y
+    if self._velocity.y <= 0, let hit = checkCollisionRaycast(world, self._position, top: false)
+    {
+      self._position.y = hit.position.y
+      self._velocity.y = 0.0
+      self._onGround = true
+    } else {
+      self._onGround = false
+    }
+    if self._velocity.y >= 0, let hit = checkCollisionRaycast(world, self._position, top: true)
+    {
+      self._position.y = hit.position.y - Self.height
+      self._velocity.y = 0.0
+    }
+#else
+    self._position.y = newPosition.y
+    var testPos = self._position
+    if self._velocity.y > 0 { testPos.y -= Self.epsilon }
+    if let aabb = checkCollision(world, testPos) {
+      if self._velocity.y <= 0 {
+        self._position.y = aabb.top + Self.epsilon
+        self._onGround = true
+      } else {
+        self._position.y = aabb.bottom - Self.height - Self.epsilon
+        self._onGround = false
+      }
+      self._velocity.y = 0
+    } else if checkCollisionRaycast(world, testPos, top: false) == nil {
+      self._onGround = false
+    }
+#endif
+
+    self._position.x = newPosition.x
+    testPos = self._position
+    //testPos.y += self._onGround ? Self.epsilon + Self.stepHeight : -Self.epsilon
+    if let aabb = checkCollision(world, testPos) {
+      if self._velocity.x < 0 {
+        self._position.x = aabb.right + Self.radius + Self.epsilon
+      } else {
+        self._position.x = aabb.left - Self.radius - Self.epsilon
+      }
+      self._velocity.x = 0
+    }
+
+    self._position.z = newPosition.z
+    testPos = self._position
+    //testPos.y += self._onGround ? Self.epsilon + Self.stepHeight : -Self.epsilon
+    if let aabb = checkCollision(world, testPos) {
+      if self._velocity.z < 0 {
+        self._position.z = aabb.near + Self.radius + Self.epsilon
+      } else {
+        self._position.z = aabb.far - Self.radius - Self.epsilon
+      }
+      self._velocity.z = 0
+    }
+  }
+
+  private mutating func moveGround(_ deltaTime: Float, _ world: World, moveDir accelDir: SIMD2<Float>) {
+    // Calculate coefficients
+    let reference: Float = 60.0
+    let invReference = 1 / reference
+    let dtReference = deltaTime * reference
+    let friction = Self.frictionCoeff
+    let fricPowRef = pow(friction, dtReference)
+    let fricMin1 = friction - 1
+    let fricPowRefMin1 = fricPowRef - 1
+
+    // Integration steps
+    func integratePosition(_  acceleration: SIMD2<Float>, _ position: SIMD2<Float>, _ velocity: SIMD2<Float>
+    ) -> SIMD2<Float> {
+      var stepMul = acceleration * (friction * fricPowRef - friction * (dtReference + 1) + dtReference)
+      stepMul += fricMin1 * velocity * fricPowRefMin1
+      let step = (friction * stepMul) / (fricMin1 * fricMin1)
+      return position + step * invReference
+    }
+    func integrateVelocity(_ accleration: SIMD2<Float>, _ velocity: SIMD2<Float>) -> SIMD2<Float> {
+      velocity * fricPowRef + accleration * (friction * fricPowRefMin1 / fricMin1)
+    }
+
+    // Perform integration
+    let acceleration = accelDir * Self.accelerationCoeff * invReference
+    var nextPosition = self._position
+    nextPosition.xz = integratePosition(acceleration, self._position.xz, self._velocity.xz)
+    nextPosition.y += self.velocity.y * deltaTime // Hack
+    self._velocity.xz = integrateVelocity(acceleration, self._velocity.xz)
+
+    // Handle collision
+    tryMove(deltaTime, world, newPosition: nextPosition)
+  }
+
+  private mutating func moveAir(_ deltaTime: Float, _ world: World, moveDir accelDir: SIMD2<Float>) {
+    var forceSum: SIMD3<Float> = .zero
+
+    // Apply movement
+    let scaled = accelDir * Self.airAccelCoeff
+    forceSum += SIMD3(scaled.x, 0, scaled.y)
+
+    // Apply gravity
+    forceSum += .down * Self.gravityCoeff
+
+    // Classic semi-implicit euler integration
+    self._velocity += forceSum * deltaTime
+    let nextPosition = self._position + self._velocity * deltaTime
+
+    // Handle collision
+    tryMove(deltaTime, world, newPosition: nextPosition)
+  }
 
   mutating func update(deltaTime: Float, world: World, camera: inout Camera) {
     var turning: SIMD2<Float> = .zero
@@ -119,92 +278,41 @@ struct Player {
         self._shouldJump = .none
       }
     }
+    let willJump: Bool
     if self._onGround && self._shouldJump != .none {
-      self._velocity.y = Self.jumpVelocity
-      self._onGround = false
       self._shouldJump = .none
+      willJump = true
+    } else {
+      willJump = false
     }
 
-    // Movement (slower in air than on ground)
+    // Movement/integration
+    // Limit unscaled movement vector to one
     let movementMagnitude = simd_length(movement)
     if movementMagnitude > 1.0 {
       movement /= movementMagnitude
     }
+    // Rotate movement vector
     let right = SIMD2(cos(self._rotation.x), sin(self._rotation.x))
-    let forward = SIMD2(-right.y, right.x)
-    let coeff = self._onGround ? Self.accelerationCoeff : Self.airAccelCoeff
-    self._velocity.xz += (right * movement.x + forward * movement.y) * coeff * deltaTime
-
+    movement = (right * movement.x + SIMD2(-right.y, right.x) * movement.y)
     // Flying and unflying
     self._velocity.y += Float(flying).clamp(-1, 1) * Self.flySpeedCoeff * deltaTime
-
-    // Apply gravity
-    self._velocity.y -= Self.gravityCoeff * deltaTime
-
-    // Move & handle collision
-    let checkCorner = { (world: World, bounds: AABB, corner: SIMD3<Float>) -> Optional<AABB> in
-      let blockPos = SIMD3(floor(corner.x), floor(corner.y), floor(corner.z))
-      if case BlockType.solid = world.getBlock(at: SIMD3<Int>(blockPos)).type {
-        let blockGeometry = AABB(from: blockPos, to: blockPos + 1)
-        if bounds.touching(blockGeometry) {
-          return blockGeometry
-        }
-      }
-      return nil
-    }
-    let checkCollision = { (world: World, position: SIMD3<Float>) -> Optional<AABB> in
-      let bounds = Self.bounds + position
-      let corners: [SIMD3<Float>] = [
-        .init(bounds.left,  bounds.bottom,   bounds.far),
-        .init(bounds.right, bounds.bottom,   bounds.far),
-        .init(bounds.left,  bounds.bottom,   bounds.near),
-        .init(bounds.right, bounds.bottom,   bounds.near),
-        .init(bounds.left,  bounds.center.y, bounds.far),
-        .init(bounds.right, bounds.center.y, bounds.far),
-        .init(bounds.left,  bounds.center.y, bounds.near),
-        .init(bounds.right, bounds.center.y, bounds.near),
-        .init(bounds.left,  bounds.top,      bounds.far),
-        .init(bounds.right, bounds.top,      bounds.far),
-        .init(bounds.left,  bounds.top,      bounds.near),
-        .init(bounds.right, bounds.top,      bounds.near)
-      ]
-      for corner in corners {
-        if let geometry = checkCorner(world, bounds, corner) {
-          return geometry
-        }
-      }
-      return nil
-    }
-    self._position.y += self._velocity.y * deltaTime
-    if let aabb = checkCollision(world, self._velocity.y > 0 ? self._position + .down * Self.epsilon : self.position) {
-      if self._velocity.y < 0 {
-        self._position.y = aabb.top + Self.epsilon
-        self._onGround = true
-      } else {
-        self._position.y = aabb.bottom - Self.height - Self.epsilon
-        self._onGround = false
-      }
-      self._velocity.y = 0
+    // Apply physics
+    if self._onGround {
+      self.moveGround(deltaTime, world, moveDir: movement)
     } else {
+      self.moveAir(deltaTime, world, moveDir: movement)
+    }
+    // Limit maximum velocity
+    let velocityLen = simd_length(self._velocity)
+    if velocityLen > Self.maxVelocity {
+      self._velocity = self._velocity / velocityLen * Self.maxVelocity
+    }
+
+    // Jumping
+    if self._onGround && willJump {
+      self._velocity.y = Self.jumpVelocity
       self._onGround = false
-    }
-    self._position.x += self._velocity.x * deltaTime
-    if let aabb = checkCollision(world, self._position) {
-      if self._velocity.x < 0 {
-        self._position.x = aabb.right + Self.radius + Self.epsilon
-      } else {
-        self._position.x = aabb.left - Self.radius - Self.epsilon
-      }
-      self._velocity.x = 0
-    }
-    self._position.z += self._velocity.z * deltaTime
-    if let aabb = checkCollision(world, self._position) {
-      if self._velocity.z < 0 {
-        self._position.z = aabb.near + Self.radius + Self.epsilon
-      } else {
-        self._position.z = aabb.far - Self.radius - Self.epsilon
-      }
-      self._velocity.z = 0
     }
 
     // Update camera
@@ -232,17 +340,6 @@ struct Player {
       }
     } else {
       self.rayhitPos = nil
-    }
-
-    // Ground friction
-    if self._onGround {
-      self._velocity.xz /= 1.0 + Self.frictionCoeff * deltaTime
-    }
-
-    // Limit maximum velocity
-    let velocityLen = simd_length(self._velocity)
-    if velocityLen > Self.maxVelocity {
-      self._velocity = self._velocity / velocityLen * Self.maxVelocity
     }
   }
 }
