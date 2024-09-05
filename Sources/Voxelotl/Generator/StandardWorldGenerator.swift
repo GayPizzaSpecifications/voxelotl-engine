@@ -18,7 +18,7 @@ struct StandardWorldGenerator: WorldGenerator {
     let chunkOrigin = chunkID &<< Chunk.shift
     var chunk = Chunk(position: chunkOrigin)
     chunk.fill(allBy: { position in
-      let fpos = SIMD3<Float>(position)
+      let fpos = SIMD3<Float>(chunkOrigin &+ position)
         let threshold: Float = 0.6
         let value = fpos.y / 16.0
           + self.noise.get(fpos * 0.05) * 1.1

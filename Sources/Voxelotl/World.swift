@@ -9,7 +9,7 @@ public class World {
 
   private var _chunks: Dictionary<ChunkID, Chunk>
   private var _chunkDamage: Set<ChunkID>
-  private var _generator: WorldGenerator
+  private var _generator: any WorldGenerator
   private var _chunkGeneration: ChunkGeneration
 
   public init() {

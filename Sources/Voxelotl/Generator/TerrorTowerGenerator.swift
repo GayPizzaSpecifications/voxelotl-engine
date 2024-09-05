@@ -6,15 +6,15 @@ struct TerrorTowerGenerator: WorldGenerator {
 
   public mutating func reset(seed: UInt64) {
     var random = Xoroshiro128PlusPlus(state: SplitMix64.createState(seed: seed))
-    self.noise1 = LayeredNoise(random: &random, octaves: 4, frequency: 0.05, amplitude: 1.1)
-    self.noise2 = LayeredNoise(random: &random, octaves: 3, frequency: 0.1, amplitude: 0.5)
+    self.noise1 = LayeredNoise(random: &random, octaves: 4, frequency: 0.05, amplitude: 2.2)
+    self.noise2 = LayeredNoise(random: &random, octaves: 3, frequency: 0.1)
   }
 
   public func makeChunk(id chunkID: SIMD3<Int>) -> Chunk {
     let chunkOrigin = chunkID &<< Chunk.shift
     var chunk = Chunk(position: chunkOrigin)
     chunk.fill(allBy: { position in
-      let fpos = SIMD3<Float>(position)
+      let fpos = SIMD3<Float>(chunkOrigin &+ position)
         let threshold: Float = 0.6
         let gradient = simd_length(fpos.xz) / 14.0
         let value = self.noise1.get(fpos) - 0.25

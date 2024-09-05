@@ -1,9 +1,10 @@
 public extension MutableCollection {
   mutating func shuffle<T: RandomProvider>(using provider: inout T) {
-    guard self.count > 1 else {
+    let count = self.count
+    guard count > 1 else {
       return
     }
-    for (first, remaining) in zip(self.indices, stride(from: 0x100, to: 1, by: -1)) {
+    for (first, remaining) in zip(self.indices, stride(from: count, to: 1, by: -1)) {
       let i = self.index(first, offsetBy: provider.next(in: remaining))
       self.swapAt(first, i)
     }

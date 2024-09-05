@@ -59,7 +59,7 @@ public struct Chunk: Hashable {
       let x = i & Self.mask
       let y = (i &>> Self.shift) & Self.mask
       let z = (i &>> (Self.shift + Self.shift)) & Self.mask
-      blocks[i].type = calculation(self.origin &+ SIMD3(x, y, z))
+      blocks[i].type = calculation(SIMD3(x, y, z))
     }
   }
 

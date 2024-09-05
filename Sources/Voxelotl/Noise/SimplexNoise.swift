@@ -1,6 +1,6 @@
 import Foundation
 
-public struct SimplexNoise<Scalar: BinaryFloatingPoint & SIMDScalar>: CoherentNoise2D, CoherentNoise3D, CoherentNoise4D, CoherentNoiseRandomInit {
+public struct SimplexNoise<Scalar: BinaryFloatingPoint & SIMDScalar>: CoherentNoise2D, CoherentNoise3D, CoherentNoise4D, CoherentNoiseRandomInit, CoherentNoiseTableInit {
   private let p: [Int16], pMod12: [Int16]
 
   private let grad3: [SIMD3<Scalar>] = [
@@ -18,10 +18,6 @@ public struct SimplexNoise<Scalar: BinaryFloatingPoint & SIMDScalar>: CoherentNo
     .init( 1,  1, 1, 0), .init( 1,  1, -1,  0), .init( 1, -1,  1, 0), .init( 1, -1, -1,  0),
     .init(-1,  1, 1, 0), .init(-1,  1, -1,  0), .init(-1, -1,  1, 0), .init(-1, -1, -1,  0)
   ]
-
-  public init() {
-    self.init(permutation: defaultPermutation)
-  }
 
   public init(permutation: [Int16]) {
     assert(permutation.count == 0x100)

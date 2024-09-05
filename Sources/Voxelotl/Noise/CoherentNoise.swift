@@ -1,11 +1,13 @@
 public protocol CoherentNoise {
   associatedtype Scalar: FloatingPoint & SIMDScalar
-
-  init()
 }
 
 public protocol CoherentNoiseRandomInit: CoherentNoise {
   init<Random: RandomProvider>(random: inout Random)
+}
+
+public protocol CoherentNoiseTableInit: CoherentNoise {
+  init(permutation: [Int16])
 }
 
 public protocol CoherentNoise2D: CoherentNoise {
