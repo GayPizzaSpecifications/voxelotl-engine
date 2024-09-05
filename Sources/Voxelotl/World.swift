@@ -12,10 +12,10 @@ public class World {
   private var _generator: any WorldGenerator
   private var _chunkGeneration: ChunkGeneration
 
-  public init() {
+  public init(generator: any WorldGenerator) {
     self._chunks = [:]
     self._chunkDamage = []
-    self._generator = TerrorTowerGenerator()
+    self._generator = generator
     self._chunkGeneration = ChunkGeneration(queue: .global(qos: .userInitiated))
     self._chunkGeneration.world = self
   }

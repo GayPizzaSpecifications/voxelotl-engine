@@ -1,4 +1,4 @@
-protocol WorldGenerator {
+public protocol WorldGenerator {
   mutating func reset(seed: UInt64)
   func makeChunk(id: SIMD3<Int>) -> Chunk
 }

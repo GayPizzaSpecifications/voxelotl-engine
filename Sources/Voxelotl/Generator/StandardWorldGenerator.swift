@@ -1,5 +1,7 @@
 struct StandardWorldGenerator: WorldGenerator {
-  var noise: ImprovedPerlin<Float>!, noise2: SimplexNoise<Float>!
+  private var heightNoise: LayeredNoiseAlt<SimplexNoise<Float>>!
+  private var terrainNoise: LayeredNoise<SimplexNoise<Float>>!
+  private var colorNoise: LayeredNoise<ImprovedPerlin<Float>>!
 
   public mutating func reset(seed: UInt64) {
     var random: any RandomProvider
@@ -10,29 +12,33 @@ struct StandardWorldGenerator: WorldGenerator {
     random = PCG32Random(seed: initialState)
 #endif
 
-    self.noise = ImprovedPerlin<Float>(random: &random)
-    self.noise2 = SimplexNoise<Float>(random: &random)
+    self.heightNoise = .init(random: &random, octaves: 200, frequency: 0.0002, amplitude: 2)
+    self.terrainNoise = .init(random: &random, octaves: 10, frequency: 0.01, amplitude: 0.337)
+    self.colorNoise = .init(random: &random, octaves: 150, frequency: 0.00366, amplitude: 2)
   }
 
   public func makeChunk(id chunkID: SIMD3<Int>) -> Chunk {
     let chunkOrigin = chunkID &<< Chunk.shift
     var chunk = Chunk(position: chunkOrigin)
-    chunk.fill(allBy: { position in
-      let fpos = SIMD3<Float>(chunkOrigin &+ position)
-        let threshold: Float = 0.6
-        let value = fpos.y / 16.0
-          + self.noise.get(fpos * 0.05) * 1.1
-          + self.noise.get(fpos * 0.10) * 0.5
-          + self.noise.get(fpos * 0.30) * 0.23
-      return if value < threshold {
-        .solid(.init(
-          hue:        Float(180 + self.noise2.get(fpos * 0.05) * 180),
-          saturation: Float(0.5 + self.noise2.get(SIMD4(fpos * 0.05, 4)) * 0.5),
-          value:      Float(0.5 + self.noise2.get(SIMD4(fpos * 0.05, 9)) * 0.5).lerp(0.5, 1)).linear)
-      } else {
-        .air
+    for z in 0..<Chunk.size {
+      for x in 0..<Chunk.size {
+        let height = self.heightNoise.get(SIMD2<Float>(chunkOrigin.xz &+ SIMD2<Int>(x, z)))
+        for y in 0..<Chunk.size {
+          let ipos = SIMD3(x, y, z)
+          let fpos = SIMD3<Float>(chunkOrigin &+ ipos)
+          let height = fpos.y / 64.0 + height
+          let value = height + self.terrainNoise.get(fpos)
+          let block: BlockType = if value < 0 {
+            .solid(.init(
+              hue: Float(180 + self.colorNoise.get(fpos) * 180),
+              saturation: 0.7, value: 0.9).linear)
+          } else {
+            .air
+          }
+          chunk.setBlock(internal: ipos, type: block)
+        }
       }
-    })
+    }
     return chunk
   }
 }

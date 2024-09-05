@@ -24,7 +24,7 @@ class Game: GameDelegate {
   var camera = Camera(fov: 60, size: .one, range: 0.06...900)
   var player = Player()
   var projection: matrix_float4x4 = .identity
-  var world = World()
+  var world = World(generator: StandardWorldGenerator())
   var cubeMesh: RendererMesh?
   var renderChunks = [SIMD3<Int>: RendererMesh]()
   var chunkMeshGeneration: ChunkMeshGeneration!
@@ -42,7 +42,7 @@ class Game: GameDelegate {
   }
 
   private func resetPlayer() {
-    self.player.position = .init(repeating: 0.5) + .up * Float(Chunk.size)
+    self.player.position = .init(repeating: 0.5) + .up * Float(Chunk.size) * 1.6
     self.player.velocity = .zero
     self.player.rotation = .init(.pi, 0)
   }

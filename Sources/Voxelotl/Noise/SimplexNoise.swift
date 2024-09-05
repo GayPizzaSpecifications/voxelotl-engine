@@ -3,22 +3,6 @@ import Foundation
 public struct SimplexNoise<Scalar: BinaryFloatingPoint & SIMDScalar>: CoherentNoise2D, CoherentNoise3D, CoherentNoise4D, CoherentNoiseRandomInit, CoherentNoiseTableInit {
   private let p: [Int16], pMod12: [Int16]
 
-  private let grad3: [SIMD3<Scalar>] = [
-    .init(1, 1, 0), .init(-1,  1, 0), .init(1, -1,  0), .init(-1, -1,  0),
-    .init(1, 0, 1), .init(-1,  0, 1), .init(1,  0, -1), .init(-1,  0, -1),
-    .init(0, 1, 1), .init( 0, -1, 1), .init(0,  1, -1), .init( 0, -1, -1)
-  ]
-  private let grad4: [SIMD4<Scalar>] = [
-    .init( 0,  1, 1, 1), .init( 0,  1,  1, -1), .init( 0,  1, -1, 1), .init( 0,  1, -1, -1),
-    .init( 0, -1, 1, 1), .init( 0, -1,  1, -1), .init( 0, -1, -1, 1), .init( 0, -1, -1, -1),
-    .init( 1,  0, 1, 1), .init( 1,  0,  1, -1), .init( 1,  0, -1, 1), .init( 1,  0, -1, -1),
-    .init(-1,  0, 1, 1), .init(-1,  0,  1, -1), .init(-1,  0, -1, 1), .init(-1,  0, -1, -1),
-    .init( 1,  1, 0, 1), .init( 1,  1,  0, -1), .init( 1, -1,  0, 1), .init( 1, -1,  0, -1),
-    .init(-1,  1, 0, 1), .init(-1,  1,  0, -1), .init(-1, -1,  0, 1), .init(-1, -1,  0, -1),
-    .init( 1,  1, 1, 0), .init( 1,  1, -1,  0), .init( 1, -1,  1, 0), .init( 1, -1, -1,  0),
-    .init(-1,  1, 1, 0), .init(-1,  1, -1,  0), .init(-1, -1,  1, 0), .init(-1, -1, -1,  0)
-  ]
-
   public init(permutation: [Int16]) {
     assert(permutation.count == 0x100)
     self.p = permutation
@@ -58,7 +42,7 @@ public struct SimplexNoise<Scalar: BinaryFloatingPoint & SIMDScalar>: CoherentNo
         return 0
       } else {
         t *= t
-        return t * t * self.grad3[gradID].xy.dot(corner)
+        return t * t * SIMD2<Scalar>(grad3[gradID].xy).dot(corner)
       }
     }
     let noise0 = cornerContribution(corner0, gradIndex0)
@@ -125,7 +109,7 @@ public struct SimplexNoise<Scalar: BinaryFloatingPoint & SIMDScalar>: CoherentNo
         return 0
       } else {
         t *= t
-        return t * t * self.grad3[gradID].dot(corner)
+        return t * t * SIMD3<Scalar>(grad3[gradID]).dot(corner)
       }
     }
     let noise0 = cornerContribution(corner0, gradCorner0)
@@ -197,7 +181,7 @@ public struct SimplexNoise<Scalar: BinaryFloatingPoint & SIMDScalar>: CoherentNo
         return 0
       } else {
         t *= t
-        return t * t * self.grad4[gradID].dot(corner)
+        return t * t * SIMD4<Scalar>(grad4[gradID]).dot(corner)
       }
     }
     let noise0 = cornerContribution(corner0, gradIndex0)
@@ -212,3 +196,20 @@ public struct SimplexNoise<Scalar: BinaryFloatingPoint & SIMDScalar>: CoherentNo
   @inline(__always) fileprivate func perm(_ idx: Int) -> Int { Int(self.p[idx & 0xFF]) }
   @inline(__always) fileprivate func permMod12(_ idx: Int) -> Int { Int(self.pMod12[idx & 0xFF]) }
 }
+
+fileprivate let grad3: [SIMD3<Int16>] = [
+  .init(1, 1, 0), .init(-1,  1, 0), .init(1, -1,  0), .init(-1, -1,  0),
+  .init(1, 0, 1), .init(-1,  0, 1), .init(1,  0, -1), .init(-1,  0, -1),
+  .init(0, 1, 1), .init( 0, -1, 1), .init(0,  1, -1), .init( 0, -1, -1)
+]
+
+fileprivate let grad4: [SIMD4<Int16>] = [
+  .init( 0,  1, 1, 1), .init( 0,  1,  1, -1), .init( 0,  1, -1, 1), .init( 0,  1, -1, -1),
+  .init( 0, -1, 1, 1), .init( 0, -1,  1, -1), .init( 0, -1, -1, 1), .init( 0, -1, -1, -1),
+  .init( 1,  0, 1, 1), .init( 1,  0,  1, -1), .init( 1,  0, -1, 1), .init( 1,  0, -1, -1),
+  .init(-1,  0, 1, 1), .init(-1,  0,  1, -1), .init(-1,  0, -1, 1), .init(-1,  0, -1, -1),
+  .init( 1,  1, 0, 1), .init( 1,  1,  0, -1), .init( 1, -1,  0, 1), .init( 1, -1,  0, -1),
+  .init(-1,  1, 0, 1), .init(-1,  1,  0, -1), .init(-1, -1,  0, 1), .init(-1, -1,  0, -1),
+  .init( 1,  1, 1, 0), .init( 1,  1, -1,  0), .init( 1, -1,  1, 0), .init( 1, -1, -1,  0),
+  .init(-1,  1, 1, 0), .init(-1,  1, -1,  0), .init(-1, -1,  1, 0), .init(-1, -1, -1,  0)
+]
