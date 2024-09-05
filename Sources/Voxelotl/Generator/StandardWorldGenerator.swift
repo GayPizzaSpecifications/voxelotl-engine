@@ -1,20 +1,14 @@
 struct StandardWorldGenerator: WorldGenerator {
   private var heightNoise: LayeredNoiseAlt<SimplexNoise<Float>>!
-  private var terrainNoise: LayeredNoise<SimplexNoise<Float>>!
-  private var colorNoise: LayeredNoise<ImprovedPerlin<Float>>!
+  private var terrainNoise: LayeredNoise<ImprovedPerlin<Float>>!
+  private var colorNoise: LayeredNoiseAlt<SimplexNoise<Float>>!
 
   public mutating func reset(seed: UInt64) {
-    var random: any RandomProvider
-    let initialState = SplitMix64.createState(seed: seed)
-#if true
-    random = Xoroshiro128PlusPlus(state: initialState)
-#else
-    random = PCG32Random(seed: initialState)
-#endif
+    var random = PCG32Random(seed: SplitMix64.createState(seed: seed))
 
-    self.heightNoise = .init(random: &random, octaves: 200, frequency: 0.0002, amplitude: 2)
-    self.terrainNoise = .init(random: &random, octaves: 10, frequency: 0.01, amplitude: 0.337)
-    self.colorNoise = .init(random: &random, octaves: 150, frequency: 0.00366, amplitude: 2)
+    self.heightNoise  = .init(random: &random, octaves: 200, frequency: 0.0002,    amplitude:  2.000)
+    self.terrainNoise = .init(random: &random, octaves:  10, frequency: 0.01,      amplitude:  0.437)
+    self.colorNoise   = .init(random: &random, octaves: 150, frequency: 0.0006667, amplitude: 17.000)
   }
 
   public func makeChunk(id chunkID: SIMD3<Int>) -> Chunk {
@@ -27,11 +21,11 @@ struct StandardWorldGenerator: WorldGenerator {
           let ipos = SIMD3(x, y, z)
           let fpos = SIMD3<Float>(chunkOrigin &+ ipos)
           let height = fpos.y / 64.0 + height
-          let value = height + self.terrainNoise.get(fpos)
+          let value = height + self.terrainNoise.get(fpos * SIMD3(1, 2, 1))
           let block: BlockType = if value < 0 {
             .solid(.init(
               hue: Float(180 + self.colorNoise.get(fpos) * 180),
-              saturation: 0.7, value: 0.9).linear)
+              saturation: 0.47, value: 0.9).linear)
           } else {
             .air
           }
