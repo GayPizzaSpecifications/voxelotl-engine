@@ -4,7 +4,7 @@ import QuartzCore.CAMetalLayer
 
 public class Application {
   private let cfg: ApplicationConfiguration
-  private let del: GameDelegate
+  private var del: GameDelegate!
 
   private var window: OpaquePointer? = nil
   private var view: SDL_MetalView? = nil
@@ -71,7 +71,8 @@ public class Application {
   }
 
   private func deinitialize() {
-    renderer = nil
+    self.del = nil
+    self.renderer = nil
     SDL_Metal_DestroyView(view)
     SDL_DestroyWindow(window)
     SDL_Quit()

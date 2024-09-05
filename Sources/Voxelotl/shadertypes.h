@@ -4,8 +4,10 @@
 #ifdef __METAL_VERSION__
 # define NS_ENUM(TYPE, NAME) enum NAME : TYPE NAME; enum NAME : TYPE
 # define NSInteger metal::int32_t
+# define CONSTANT_PTR(TYPE) constant TYPE*
 #else
 # import <Foundation/Foundation.h>
+# define CONSTANT_PTR(TYPE) uint64_t
 #endif
 
 #include <simd/simd.h>

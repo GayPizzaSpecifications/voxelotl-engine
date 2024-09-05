@@ -415,7 +415,11 @@ public class Renderer {
       indexBufferOffset: 0)
   }
 
-  func batch(instances: [Instance], mesh: RendererMesh, material: Material, environment: Environment, camera: Camera) {
+  func createModelBatch() -> ModelBatch {
+    return ModelBatch(self)
+  }
+
+  func batch(instances: [ModelBatch.Instance], mesh: RendererMesh, material: Material, environment: Environment, camera: Camera) {
     assert(self._encoder != nil, "batch can't be called outside of a frame being rendered")
 
     var vertUniforms = VertexShaderUniforms(projView: camera.viewProjection)
@@ -447,12 +451,9 @@ public class Renderer {
     instanceBuffer.contents().withMemoryRebound(to: VertexShaderInstance.self, capacity: numInstances) { data in
       for i in 0..<numInstances {
         let instance = instances[i]
-        let model =
-          .translate(instance.position) *
-          matrix_float4x4(instance.rotation) *
-          .scale(instance.scale)
         data[i] = VertexShaderInstance(
-          model: model, normalModel: model.inverse.transpose,
+          model: instance.model,
+          normalModel: instance.model.inverse.transpose,
           color: SIMD4(instance.color))
       }
     }

@@ -1,24 +1,5 @@
 import simd
 
-struct Instance {
-  let position: SIMD3<Float>
-  let scale: SIMD3<Float>
-  let rotation: simd_quatf
-  let color: Color<Float>
-
-  init(
-    position: SIMD3<Float> = .zero,
-    scale: SIMD3<Float> = .one,
-    rotation: simd_quatf = .identity,
-    color: Color<Float> = .white
-  ) {
-    self.position = position
-    self.scale = scale
-    self.rotation = rotation
-    self.color = color
-  }
-}
-
 class Game: GameDelegate {
   private var fpsCalculator = FPSCalculator()
   var camera = Camera(fov: 60, size: .one, range: 0.06...900)
@@ -28,6 +9,7 @@ class Game: GameDelegate {
   var cubeMesh: RendererMesh?
   var renderChunks = [SIMD3<Int>: RendererMesh]()
   var chunkMeshGeneration: ChunkMeshGeneration!
+  var modelBatch: ModelBatch!
 
   func create(_ renderer: Renderer) {
     self.resetPlayer()
@@ -39,6 +21,7 @@ class Game: GameDelegate {
     self.chunkMeshGeneration = .init(queue: .global(qos: .userInitiated))
     self.chunkMeshGeneration.game = self
     self.chunkMeshGeneration.renderer = renderer
+    self.modelBatch = renderer.createModelBatch()
   }
 
   private func resetPlayer() {
@@ -118,32 +101,24 @@ class Game: GameDelegate {
     }
     self.chunkMeshGeneration.acceptReadyMeshes()
 
+    self.modelBatch.begin(camera: camera, environment: env)
+
     for (id, chunk) in self.renderChunks {
       let drawPos = SIMD3<Float>(id &<< Chunk.shift)
-      renderer.draw(
-        model: .translate(drawPos),
-        color: .white,
-        mesh: chunk,
-        material: material,
-        environment: env,
-        camera: self.camera)
+      self.modelBatch.draw(.init(mesh: chunk, material: material), position: drawPos)
     }
 
-    var instances = [Instance]()
     if let position = player.rayhitPos {
-      instances.append(
-        Instance(
-          position: position,
-          scale:    .init(repeating: 0.0725 * 0.5),
-          rotation:
-            .init(angle: totalTime * 3.0, axis: .init(0, 1, 0)) *
-            .init(angle: totalTime * 1.5, axis: .init(1, 0, 0)) *
-            .init(angle: totalTime * 0.7, axis: .init(0, 0, 1)),
-          color:    .init(r: 0.5, g: 0.5, b: 1).linear))
+      let rotation: simd_quatf =
+        .init(angle: totalTime * 3.0, axis: .Y) *
+        .init(angle: totalTime * 1.5, axis: .X) *
+        .init(angle: totalTime * 0.7, axis: .Z)
+      self.modelBatch.draw(.init(mesh: self.cubeMesh!, material: material),
+        position: position, scale: 0.0725 * 0.5, rotation: rotation,
+        color: .init(r: 0.5, g: 0.5, b: 1))
     }
-    if self.cubeMesh != nil && !instances.isEmpty {
-      renderer.batch(instances: instances, mesh: self.cubeMesh!, material: material, environment: env, camera: self.camera)
-    }
+
+    self.modelBatch.end()
   }
 
   func resize(_ size: Size<Int>) {
