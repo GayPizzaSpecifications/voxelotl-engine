@@ -2,7 +2,7 @@ import Foundation
 
 public struct ChunkMeshGeneration {
   private let queue: OperationQueue
-  private let localReadyMeshes = ConcurrentDictionary<SIMD3<Int>, RendererMesh>()
+  private let localReadyMeshes = ConcurrentDictionary<SIMD3<Int>, RendererMesh?>()
 
   weak var game: Game?
   weak var renderer: Renderer?

@@ -50,6 +50,10 @@ public struct ChunkGeneration {
     }
   }
 
+  public func waitForActiveOperations() {
+    self.queue.waitUntilAllOperationsAreFinished()
+  }
+
   public mutating func acceptReadyChunks() {
     guard let world = self.world else {
       return

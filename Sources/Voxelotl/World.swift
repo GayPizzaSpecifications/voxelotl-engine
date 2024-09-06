@@ -106,6 +106,10 @@ public class World {
     self._chunkGeneration.acceptReadyChunks()
   }
 
+  public func waitForActiveOperations() {
+    self._chunkGeneration.waitForActiveOperations()
+  }
+
   func handleRenderDamagedChunks(_ body: (_ id: ChunkID, _ chunk: Chunk) -> Void) {
     for id in self._chunkDamage {
       body(id, self._chunks[id]!)

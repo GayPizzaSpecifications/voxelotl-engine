@@ -7,13 +7,14 @@ class Game: GameDelegate {
   var projection: matrix_float4x4 = .identity
   var world = World(generator: StandardWorldGenerator())
   var cubeMesh: RendererMesh?
-  var renderChunks = [SIMD3<Int>: RendererMesh]()
+  var renderChunks = [SIMD3<Int>: RendererMesh?]()
   var chunkMeshGeneration: ChunkMeshGeneration!
   var modelBatch: ModelBatch!
 
   func create(_ renderer: Renderer) {
     self.resetPlayer()
     self.generateWorld()
+    self.world.waitForActiveOperations()
 
     self.cubeMesh = renderer.createMesh(CubeMeshBuilder.build(bound: .fromUnitCube(position: .zero, scale: .one)))
 
@@ -104,8 +105,11 @@ class Game: GameDelegate {
     self.modelBatch.begin(camera: camera, environment: env)
 
     for (id, chunk) in self.renderChunks {
+      if chunk == nil {
+        continue
+      }
       let drawPos = SIMD3<Float>(id &<< Chunk.shift)
-      self.modelBatch.draw(.init(mesh: chunk, material: material), position: drawPos)
+      self.modelBatch.draw(.init(mesh: chunk!, material: material), position: drawPos)
     }
 
     if let position = player.rayhitPos {
