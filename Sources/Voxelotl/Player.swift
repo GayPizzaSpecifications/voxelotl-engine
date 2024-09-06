@@ -77,15 +77,15 @@ struct Player {
     func checkCollisionRaycast(_ world: World, _ position: SIMD3<Float>, top: Bool) -> Optional<RaycastHit> {
       let dir: SIMD3<Float> = !top ? .down : .up
       var org = !top ? self._position + .up * Self.height : self._position
-      let max: Float = Self.height + Self.epsilon
+      let max: Float = Self.height + Self.epsilon * 4
 
       org.x -= Self.radius
-      org.y -= Self.radius
+      org.z -= Self.radius
       if let hit1 = raycast(world: world, origin: org, direction: dir, maxDistance: max) { return hit1 }
       org.x += Self.radius + Self.radius
       if let hit2 = raycast(world: world, origin: org, direction: dir, maxDistance: max) { return hit2 }
       org.x -= Self.radius + Self.radius
-      org.y += Self.radius + Self.radius
+      org.z += Self.radius + Self.radius
       if let hit3 = raycast(world: world, origin: org, direction: dir, maxDistance: max) { return hit3 }
       org.x += Self.radius + Self.radius
       if let hit4 = raycast(world: world, origin: org, direction: dir, maxDistance: max) { return hit4 }
