@@ -1,3 +1,4 @@
+//TODO: Sort, Blend
 public struct Environment {
   public var cullFace: Face
   public var lightDirection: SIMD3<Float>

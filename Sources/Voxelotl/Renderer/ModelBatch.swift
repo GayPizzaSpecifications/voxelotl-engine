@@ -13,33 +13,17 @@ public struct ModelBatch {
     self._instances = Array()
   }
 
-  //TODO: Sort, Blend
   public mutating func begin(camera: Camera, environment: Environment) {
     self._active = true
     self._cam = camera
     self._env = environment
     self._prev = nil
+    self._renderer.setupBatch(material: Game.material, environment: environment, camera: camera)
   }
 
   private mutating func flush() {
     assert(self._instances.count > 0)
-    if self._instances.count == 1 {
-      let instance = self._instances.first!
-      self._renderer.draw(
-        model:       instance.world,
-        color:       instance.color,
-        mesh:        self._prev.mesh,
-        material:    self._prev.material,
-        environment: self._env,
-        camera:      self._cam)
-    } else {
-      self._renderer.batch(
-        instances:   self._instances,
-        mesh:        self._prev.mesh,
-        material:    self._prev.material,
-        environment: self._env,
-        camera:      self._cam)
-    }
+    self._renderer.submitBatch(mesh: self._prev.mesh, instances: self._instances)
     self._instances.removeAll(keepingCapacity: true)
     self._prev = nil
   }

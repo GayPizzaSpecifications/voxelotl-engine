@@ -84,17 +84,18 @@ class Game: GameDelegate {
     self.world.update()
   }
 
+  public static let material = Material(
+    ambient:  Color(rgba8888: 0x4F4F4F00).linear,
+    diffuse:  Color(rgba8888: 0xDFDFDF00).linear,
+    specular: Color(rgba8888: 0x2F2F2F00).linear,
+    gloss: 75)
+
   func draw(_ renderer: Renderer, _ time: GameTime) {
     let totalTime = Float(time.total.asFloat)
 
     let env = Environment(
       cullFace: .back,
       lightDirection: .init(0.75, -1, 0.5))
-    let material = Material(
-      ambient:  Color(rgba8888: 0x4F4F4F00).linear,
-      diffuse:  Color(rgba8888: 0xDFDFDF00).linear,
-      specular: Color(rgba8888: 0x2F2F2F00).linear,
-      gloss: 75)
 
     // Update chunk meshes if needed
     self.world.handleRenderDamagedChunks { id, chunk in
@@ -109,7 +110,7 @@ class Game: GameDelegate {
         continue
       }
       let drawPos = SIMD3<Float>(id &<< Chunk.shift)
-      self.modelBatch.draw(.init(mesh: chunk!, material: material), position: drawPos)
+      self.modelBatch.draw(.init(mesh: chunk!, material: Self.material), position: drawPos)
     }
 
     if let position = player.rayhitPos {
@@ -117,7 +118,7 @@ class Game: GameDelegate {
         .init(angle: totalTime * 3.0, axis: .Y) *
         .init(angle: totalTime * 1.5, axis: .X) *
         .init(angle: totalTime * 0.7, axis: .Z)
-      self.modelBatch.draw(.init(mesh: self.cubeMesh!, material: material),
+      self.modelBatch.draw(.init(mesh: self.cubeMesh!, material: Self.material),
         position: position, scale: 0.0725 * 0.5, rotation: rotation,
         color: .init(r: 0.5, g: 0.5, b: 1))
     }

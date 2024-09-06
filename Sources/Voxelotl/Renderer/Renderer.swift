@@ -22,7 +22,7 @@ public class Renderer {
   private let _defaultStorageMode: MTLResourceOptions
 
   private var depthTextures: [MTLTexture]
-  private var _instances: [MTLBuffer?]
+  //private var _instances: [MTLBuffer?]
 
   private var _encoder: MTLRenderCommandEncoder! = nil
 
@@ -99,7 +99,7 @@ public class Renderer {
       return depthStencilTexture
     }
 
-    self._instances = [MTLBuffer?](repeating: nil, count: numFramesInFlight)
+    //self._instances = [MTLBuffer?](repeating: nil, count: numFramesInFlight)
 
     let stencilDepthDescription = MTLDepthStencilDescriptor()
     stencilDepthDescription.depthCompareFunction = .less  // OpenGL default
@@ -377,8 +377,12 @@ public class Renderer {
     }
   }
 
-  func draw(model: matrix_float4x4, color: Color<Float>, mesh: RendererMesh, material: Material, environment: Environment, camera: Camera) {
-    assert(self._encoder != nil, "draw can't be called outside of a frame being rendered")
+  func createModelBatch() -> ModelBatch {
+    return ModelBatch(self)
+  }
+
+  internal func setupBatch(material: Material, environment: Environment, camera: Camera) {
+    assert(self._encoder != nil, "startBatch can't be called outside of a frame being rendered")
 
     var vertUniforms = VertexShaderUniforms(projView: camera.viewProjection)
     var fragUniforms = FragmentShaderUniforms(
@@ -388,50 +392,24 @@ public class Renderer {
       diffuseColor:  SIMD4(material.diffuse),
       specularColor: SIMD4(material.specular),
       specularIntensity: material.gloss)
-    var instance = VertexShaderInstance(
-      model:       model,
-      normalModel: model.inverse.transpose,
-      color:       SIMD4(color))
 
     self._encoder.setCullMode(.init(environment.cullFace))
 
-    self._encoder.setVertexBuffer(mesh._vertBuf, offset: 0, index: VertexShaderInputIdx.vertices.rawValue)
     // Ideal as long as our uniforms total 4 KB or less
-    self._encoder.setVertexBytes(&instance,
-      length: MemoryLayout<VertexShaderInstance>.stride,
-      index: VertexShaderInputIdx.instance.rawValue)
     self._encoder.setVertexBytes(&vertUniforms,
       length: MemoryLayout<VertexShaderUniforms>.stride,
       index: VertexShaderInputIdx.uniforms.rawValue)
     self._encoder.setFragmentBytes(&fragUniforms,
       length: MemoryLayout<FragmentShaderUniforms>.stride,
       index: FragmentShaderInputIdx.uniforms.rawValue)
-
-    self._encoder.drawIndexedPrimitives(
-      type: .triangle,
-      indexCount: mesh.numIndices,
-      indexType: .uint16,
-      indexBuffer: mesh._idxBuf,
-      indexBufferOffset: 0)
   }
 
-  func createModelBatch() -> ModelBatch {
-    return ModelBatch(self)
-  }
-
-  func batch(instances: [ModelBatch.Instance], mesh: RendererMesh, material: Material, environment: Environment, camera: Camera) {
-    assert(self._encoder != nil, "batch can't be called outside of a frame being rendered")
-
-    var vertUniforms = VertexShaderUniforms(projView: camera.viewProjection)
-    var fragUniforms = FragmentShaderUniforms(
-      cameraPosition: camera.position,
-      directionalLight: normalize(environment.lightDirection),
-      ambientColor:  SIMD4(material.ambient),
-      diffuseColor:  SIMD4(material.diffuse),
-      specularColor: SIMD4(material.specular),
-      specularIntensity: material.gloss)
-
+  internal func submitBatch(mesh: RendererMesh, instances: [ModelBatch.Instance]) {
+    assert(self._encoder != nil, "submitBatch can't be called outside of a frame being rendered")
     let numInstances = instances.count
+    assert(numInstances > 0, "submitBatch called with zero instances")
+
+    /*
     let instancesBytes = numInstances * MemoryLayout<VertexShaderInstance>.stride
 
     // (Re)create instance buffer if needed
@@ -463,27 +441,30 @@ public class Renderer {
     }
 #endif
 
-    self._encoder.setCullMode(.init(environment.cullFace))
-
-    self._encoder.setVertexBuffer(mesh._vertBuf, offset: 0, index: VertexShaderInputIdx.vertices.rawValue)
     self._encoder.setVertexBuffer(instanceBuffer,
       offset: 0,
       index: VertexShaderInputIdx.instance.rawValue)
+    */
+    let instanceData = instances.map { instance in
+      VertexShaderInstance(
+        model: instance.world,
+        normalModel: instance.world.inverse.transpose,
+        color: SIMD4(instance.color))
+    }
+
+    self._encoder.setVertexBuffer(mesh._vertBuf, offset: 0, index: VertexShaderInputIdx.vertices.rawValue)
     // Ideal as long as our uniforms total 4 KB or less
-    self._encoder.setVertexBytes(&vertUniforms,
-      length: MemoryLayout<VertexShaderUniforms>.stride,
-      index: VertexShaderInputIdx.uniforms.rawValue)
-    self._encoder.setFragmentBytes(&fragUniforms,
-      length: MemoryLayout<FragmentShaderUniforms>.stride,
-      index: FragmentShaderInputIdx.uniforms.rawValue)
+    self._encoder.setVertexBytes(instanceData,
+      length: numInstances * MemoryLayout<VertexShaderInstance>.stride,
+      index: VertexShaderInputIdx.instance.rawValue)
 
     self._encoder.drawIndexedPrimitives(
-      type: .triangle,
-      indexCount: mesh.numIndices,
-      indexType: .uint16,
-      indexBuffer: mesh._idxBuf,
+      type:              .triangle,
+      indexCount:        mesh.numIndices,
+      indexType:         .uint16,
+      indexBuffer:       mesh._idxBuf,
       indexBufferOffset: 0,
-      instanceCount: numInstances)
+      instanceCount:     numInstances)
   }
 }
 
