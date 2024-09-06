@@ -452,8 +452,8 @@ public class Renderer {
       for i in 0..<numInstances {
         let instance = instances[i]
         data[i] = VertexShaderInstance(
-          model: instance.model,
-          normalModel: instance.model.inverse.transpose,
+          model: instance.world,
+          normalModel: instance.world.inverse.transpose,
           color: SIMD4(instance.color))
       }
     }
@@ -487,10 +487,21 @@ public class Renderer {
   }
 }
 
-public struct RendererMesh {
-  fileprivate let _vertBuf: MTLBuffer
-  fileprivate let _idxBuf: MTLBuffer
+public struct RendererMesh: Hashable {
+  fileprivate let _vertBuf: MTLBuffer, _idxBuf: MTLBuffer
   public let numIndices: Int
+
+  public static func == (lhs: Self, rhs: Self) -> Bool {
+    lhs._vertBuf.gpuAddress == rhs._vertBuf.gpuAddress && lhs._vertBuf.length == rhs._vertBuf.length &&
+    lhs._vertBuf.gpuAddress == rhs._vertBuf.gpuAddress && lhs._vertBuf.length == rhs._vertBuf.length &&
+    lhs.numIndices == rhs.numIndices
+  }
+
+  public func hash(into hasher: inout Hasher) {
+    hasher.combine(self._vertBuf.hash)
+    hasher.combine(self._idxBuf.hash)
+    hasher.combine(self.numIndices)
+  }
 }
 
 extension MTLClearColor {
