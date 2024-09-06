@@ -14,12 +14,17 @@ public struct ChunkGeneration {
     self.queue.qualityOfService = .userInitiated
   }
 
-  public mutating func generate(chunkID: SIMD3<Int>) {
-    if !generatingChunkSet.insert(chunkID).inserted {
-      return
-    }
+  public mutating func cancelAndClearAll() {
+    self.queue.cancelAllOperations()
+    self.queue.waitUntilAllOperationsAreFinished()
+    self.localReadyChunks.removeAll()
+    self.generatingChunkSet.removeAll()
+  }
 
-    self.queueGenerateJob(chunkID: chunkID)
+  public mutating func generate(chunkID: SIMD3<Int>) {
+    if generatingChunkSet.insert(chunkID).inserted {
+      self.queueGenerateJob(chunkID: chunkID)
+    }
   }
 
   func queueGenerateJob(chunkID: SIMD3<Int>) {

@@ -32,6 +32,8 @@ class Game: GameDelegate {
   }
 
   private func generateWorld() {
+    self.world.removeAllChunks()
+    self.renderChunks.removeAll()
     let seed = UInt64(Arc4Random.instance.next()) | UInt64(Arc4Random.instance.next()) << 32
     printErr(seed)
 #if DEBUG

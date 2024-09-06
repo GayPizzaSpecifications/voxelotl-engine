@@ -70,6 +70,12 @@ public class ConcurrentDictionary<V: Hashable, T>: Collection {
     }
   }
 
+  public func removeAll(keepingCapacity keep: Bool = false) {
+    self.locked {
+      self.inner.removeAll(keepingCapacity: keep)
+    }
+  }
+
   fileprivate func locked<X>(_ perform: () -> X) -> X {
     self.lock.lock()
     defer {

@@ -68,6 +68,11 @@ public class World {
     }
   }
 
+  func removeAllChunks() {
+    self._chunkGeneration.cancelAndClearAll()
+    self._chunks.removeAll()
+  }
+
   func generate(width: Int, height: Int, depth: Int, seed: UInt64) {
     self._generator.reset(seed: seed)
     let orig = SIMD3(width, height, depth) / 2
