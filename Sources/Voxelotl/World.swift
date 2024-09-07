@@ -107,7 +107,8 @@ public class World {
     }
   }
 
-  public func update() {
+  public func update(priorityPosition: SIMD3<Float>) {
+    self._chunkGeneration.updatePriorityPosition(position: priorityPosition)
     self._chunkGeneration.acceptReadyChunks()
   }
 

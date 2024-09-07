@@ -83,7 +83,7 @@ class Game: GameDelegate {
     }
 
     self.world.generateAdjacentChunksIfNeeded(position: self.player.position)
-    self.world.update()
+    self.world.update(priorityPosition: self.player.position)
   }
 
   public static let material = Material(

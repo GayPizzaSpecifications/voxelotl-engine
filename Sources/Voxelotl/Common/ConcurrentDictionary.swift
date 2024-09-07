@@ -75,6 +75,18 @@ public class ConcurrentDictionary<V: Hashable, T>: Collection {
       self.inner.removeAll(keepingCapacity: keep)
     }
   }
+  
+  @discardableResult public func remove(key: V) -> T? {
+    self.locked {
+      self.inner.removeValue(forKey: key)
+    }
+  }
+  
+  public func with(_ perform: (inout [V : T]) -> Void) {
+    self.locked {
+      perform(&self.inner)
+    }
+  }
 
   fileprivate func locked<X>(_ perform: () -> X) -> X {
     self.lock.lock()
