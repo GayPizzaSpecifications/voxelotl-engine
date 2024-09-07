@@ -10,8 +10,8 @@ struct TerrorTowerGenerator: WorldGenerator {
     self.noise2 = LayeredNoise(random: &random, octaves: 3, frequency: 0.1)
   }
 
-  public func makeChunk(id chunkID: SIMD3<Int>) -> Chunk {
-    let chunkOrigin = chunkID &<< Chunk.shift
+  public func makeChunk(id chunkID: ChunkID) -> Chunk {
+    let chunkOrigin = chunkID.getPosition()
     var chunk = Chunk(position: chunkOrigin)
     chunk.fill(allBy: { position in
       let fpos = SIMD3<Float>(chunkOrigin &+ position)

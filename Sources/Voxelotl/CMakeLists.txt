@@ -64,6 +64,7 @@ add_executable(Voxelotl MACOSX_BUNDLE
   ChunkMeshGeneration.swift
   CubeMeshBuilder.swift
   ChunkMeshBuilder.swift
+  ChunkID.swift
   World.swift
   Raycast.swift
   Camera.swift

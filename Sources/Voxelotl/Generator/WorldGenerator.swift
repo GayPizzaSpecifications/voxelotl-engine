@@ -1,6 +1,6 @@
 public protocol WorldGenerator {
   mutating func reset(seed: UInt64)
-  func makeChunk(id: SIMD3<Int>) -> Chunk
+  func makeChunk(id: ChunkID) -> Chunk
 }
 
 internal extension RandomProvider where Output == UInt64, Self: RandomSeedable, SeedType == UInt64 {

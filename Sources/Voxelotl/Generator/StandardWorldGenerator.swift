@@ -15,7 +15,7 @@ struct StandardWorldGenerator: WorldGenerator {
     self.colorNoise   = .init(random: &random, octaves: 15, frequency: 0.006667, amplitude: 3)
   }
 
-  public func makeChunk(id chunkID: SIMD3<Int>) -> Chunk {
+  public func makeChunk(id chunkID: ChunkID) -> Chunk {
     let blockFunc = { (height: Float, position: SIMD3<Float>) -> BlockType in
 #if true
       let value = height + self.terrainNoise.get(position * SIMD3(1, 2, 1))
@@ -37,7 +37,7 @@ struct StandardWorldGenerator: WorldGenerator {
         saturation: 0.47, value: 0.9).linear)
     }
 
-    let chunkOrigin = chunkID &<< Chunk.shift
+    let chunkOrigin = chunkID.getPosition()
     var chunk = Chunk(position: chunkOrigin)
     for z in 0..<Chunk.size {
       for x in 0..<Chunk.size {

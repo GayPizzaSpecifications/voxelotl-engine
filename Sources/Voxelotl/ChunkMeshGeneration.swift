@@ -2,7 +2,7 @@ import Foundation
 
 public struct ChunkMeshGeneration {
   private let queue: OperationQueue
-  private let localReadyMeshes = ConcurrentDictionary<SIMD3<Int>, RendererMesh?>()
+  private let localReadyMeshes = ConcurrentDictionary<ChunkID, RendererMesh?>()
 
   weak var game: Game?
   weak var renderer: Renderer?
@@ -14,11 +14,11 @@ public struct ChunkMeshGeneration {
     self.queue.qualityOfService = .userInitiated
   }
 
-  public mutating func generate(chunkID: SIMD3<Int>, chunk: Chunk) {
-    self.queueGenerateJob(chunkID: chunkID, chunk: chunk)
+  public mutating func generate(id chunkID: ChunkID, chunk: Chunk) {
+    self.queueGenerateJob(id: chunkID, chunk: chunk)
   }
 
-  func queueGenerateJob(chunkID: SIMD3<Int>, chunk: Chunk) {
+  func queueGenerateJob(id chunkID: ChunkID, chunk: Chunk) {
     self.queue.addOperation {
       guard let game = self.game else {
         return

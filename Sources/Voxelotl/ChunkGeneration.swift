@@ -2,8 +2,8 @@ import Foundation
 
 public struct ChunkGeneration {
   private let queue: OperationQueue
-  private let localReadyChunks = ConcurrentDictionary<SIMD3<Int>, Chunk>()
-  private var generatingChunkSet = Set<SIMD3<Int>>()
+  private let localReadyChunks = ConcurrentDictionary<ChunkID, Chunk>()
+  private var generatingChunkSet = Set<ChunkID>()
 
   weak var world: World?
 
@@ -21,18 +21,18 @@ public struct ChunkGeneration {
     self.generatingChunkSet.removeAll()
   }
 
-  public mutating func generate(chunkID: SIMD3<Int>) {
+  public mutating func generate(chunkID: ChunkID) {
     if generatingChunkSet.insert(chunkID).inserted {
       self.queueGenerateJob(chunkID: chunkID)
     }
   }
 
-  func queueGenerateJob(chunkID: SIMD3<Int>) {
+  func queueGenerateJob(chunkID: ChunkID) {
     self.queue.addOperation {
       guard let world = self.world else {
         return
       }
-      let chunk = world.generateSingleChunkUncommitted(chunkID: chunkID)
+      let chunk = world.generateSingleChunkUncommitted(id: chunkID)
       self.localReadyChunks[chunkID] = chunk
     }
   }
@@ -41,12 +41,12 @@ public struct ChunkGeneration {
     guard let world = self.world else {
       return
     }
-    let centerChunkID = World.makeID(position: position)
+    let centerChunkID = ChunkID(fromPosition: position)
     let range = -2...2
     for z in range {
       for y in range {
         for x in range {
-          let chunkID = centerChunkID &+ SIMD3(x, y, z)
+          let chunkID = centerChunkID &+ ChunkID(x, y, z)
           if world.getChunk(id: chunkID) == nil {
             self.generate(chunkID: chunkID)
           }
@@ -69,7 +69,7 @@ public struct ChunkGeneration {
     }
 
     for (chunkID, chunk) in self.localReadyChunks.take() {
-      world.addChunk(chunkID: chunkID, chunk: chunk)
+      world.addChunk(id: chunkID, chunk: chunk)
       self.generatingChunkSet.remove(chunkID)
     }
   }

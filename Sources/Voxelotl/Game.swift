@@ -7,7 +7,7 @@ class Game: GameDelegate {
   var projection: matrix_float4x4 = .identity
   var world = World(generator: StandardWorldGenerator())
   var cubeMesh: RendererMesh?
-  var renderChunks = [SIMD3<Int>: RendererMesh?]()
+  var renderChunks = [ChunkID: RendererMesh?]()
   var chunkMeshGeneration: ChunkMeshGeneration!
   var modelBatch: ModelBatch!
 
@@ -77,9 +77,9 @@ class Game: GameDelegate {
 
     // Regenerate current chunk
     if regenChunk {
-      let chunkID = World.makeID(position: self.player.position)
-      let chunk = self.world.generateSingleChunkUncommitted(chunkID: chunkID)
-      self.world.addChunk(chunkID: chunkID, chunk: chunk)
+      let chunkID = ChunkID(fromPosition: self.player.position)
+      let chunk = self.world.generateSingleChunkUncommitted(id: chunkID)
+      self.world.addChunk(id: chunkID, chunk: chunk)
     }
 
     self.world.generateAdjacentChunksIfNeeded(position: self.player.position)
@@ -101,7 +101,7 @@ class Game: GameDelegate {
 
     // Update chunk meshes if needed
     self.world.handleRenderDamagedChunks { id, chunk in
-      self.chunkMeshGeneration.generate(chunkID: id, chunk: chunk)
+      self.chunkMeshGeneration.generate(id: id, chunk: chunk)
     }
     self.chunkMeshGeneration.acceptReadyMeshes()
 
@@ -111,7 +111,7 @@ class Game: GameDelegate {
       if chunk == nil {
         continue
       }
-      let drawPos = SIMD3<Float>(id &<< Chunk.shift)
+      let drawPos = id.getFloatPosition()
       self.modelBatch.draw(.init(mesh: chunk!, material: Self.material), position: drawPos)
     }
 
