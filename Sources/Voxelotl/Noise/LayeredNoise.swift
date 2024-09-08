@@ -20,7 +20,7 @@ public extension LayeredNoise where Generator: CoherentNoiseRandomInit {
 }
 
 public extension LayeredNoise where Generator: CoherentNoiseTableInit {
-  init(permutation table: [Int16], octaves: Int, frequency: Scalar, amplitude: Scalar = 1) {
+  init(permutation table: [UInt8], octaves: Int, frequency: Scalar, amplitude: Scalar = 1) {
     self.octaves   = octaves
     self.frequency = frequency
     self.amplitude = amplitude

@@ -7,7 +7,7 @@ public protocol CoherentNoiseRandomInit: CoherentNoise {
 }
 
 public protocol CoherentNoiseTableInit: CoherentNoise {
-  init(permutation: [Int16])
+  init(permutation: [UInt8])
 }
 
 public protocol CoherentNoise2D: CoherentNoise {

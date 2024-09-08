@@ -1,15 +1,15 @@
 import Foundation
 
 public struct ImprovedPerlin<Scalar: BinaryFloatingPoint & SIMDScalar>: CoherentNoise2D, CoherentNoise3D, CoherentNoiseRandomInit, CoherentNoiseTableInit {
-  private let p: [Int16]
+  private let p: [UInt8]
 
-  public init(permutation: [Int16]) {
+  public init(permutation: [UInt8]) {
     assert(permutation.count == 0x100)
     self.p = permutation
   }
 
   public init<Random: RandomProvider>(random: inout Random) {
-    self.p = (0..<0x100).map { Int16($0) }.shuffled(using: &random)
+    self.p = (0..<0x100).map { UInt8($0) }.shuffled(using: &random)
   }
 
   public func get(_ point: SIMD2<Scalar>) -> Scalar {
