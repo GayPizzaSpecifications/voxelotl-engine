@@ -19,11 +19,11 @@ struct TerrorTowerGenerator: WorldGenerator {
         let gradient = simd_length(fpos.xz) / 14.0
         let value = self.noise1.get(fpos) - 0.25
       return if gradient + value < threshold {
-        .solid(.init(
+        .solid(Color<UInt8>(.init(
           hue: ((fpos.x * 0.5 + fpos.y) / 30.0) * 360.0,
           saturation: 0.2 + noise2.get(fpos) * 0.2,
           value: 0.75 + noise2.get(SIMD4(fpos, 1) * 0.25)
-        ).linear)
+        )))
       } else {
         .air
       }

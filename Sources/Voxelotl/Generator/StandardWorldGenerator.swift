@@ -32,9 +32,9 @@ struct StandardWorldGenerator: WorldGenerator {
       if self.ravineMask.get(position * SIMD3(1, 0.441, 1)) >= 0.8 &&
         abs(self.ravineNoise.get(position * SIMD3(1, 0.6, 1))) <= 0.1 { return .air }
 #endif
-      return .solid(.init(
+      return .solid(Color<UInt8>(.init(
         hue: Float(180 + self.colorNoise.get(position) * 180),
-        saturation: 0.47, value: 0.9).linear)
+        saturation: 0.47, value: 0.9)))
     }
 
     let chunkOrigin = chunkID.getPosition()

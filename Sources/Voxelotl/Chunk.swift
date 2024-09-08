@@ -123,7 +123,7 @@ public struct Chunk: Hashable {
 
 public enum BlockType: Hashable {
   case air
-  case solid(_ color: Color<Float>)
+  case solid(_ color: Color<UInt8>)
 }
 
 public struct Block: Hashable {
