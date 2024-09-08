@@ -1,18 +1,19 @@
 import Foundation
 
 public struct Color<T: SIMDScalar>: Hashable {
-  private var _values: SIMD4<T>
-
-  internal var values: SIMD4<T> { self._values }
+  private var _r: T, _g: T, _b: T, _a: T
 
   public init(r newR: T, g newG: T, b newB: T, a newA: T) {
-    self._values = .init(newR, newG, newB, newA)
+    self._r = newR
+    self._g = newG
+    self._b = newB
+    self._a = newA
   }
 
-  @inline(__always) public var r: T { get { self._values.x } set(newR) { self._values.x = newR } }
-  @inline(__always) public var g: T { get { self._values.y } set(newG) { self._values.y = newG } }
-  @inline(__always) public var b: T { get { self._values.z } set(newB) { self._values.z = newB } }
-  @inline(__always) public var a: T { get { self._values.w } set(newA) { self._values.w = newA } }
+  @inline(__always) public var r: T { get { self._r } set(newR) { self._r = newR } }
+  @inline(__always) public var g: T { get { self._g } set(newG) { self._g = newG } }
+  @inline(__always) public var b: T { get { self._b } set(newB) { self._b = newB } }
+  @inline(__always) public var a: T { get { self._a } set(newA) { self._a = newA } }
 }
 
 // Sadly doesn't seem to be a better way to do this generically at the moment
@@ -51,10 +52,10 @@ public extension Color where T: FixedWidthInteger {
 public extension Color where T: UnsignedInteger & FixedWidthInteger {
   init<U: BinaryFloatingPoint>(_ other: Color<U>) {
     self.init(
-      r: T((other.r * U(T.max)).clamp(0, U(T.max))),
-      g: T((other.g * U(T.max)).clamp(0, U(T.max))),
-      b: T((other.b * U(T.max)).clamp(0, U(T.max))),
-      a: T((other.a * U(T.max)).clamp(0, U(T.max))))
+      r: T((other._r * U(T.max)).clamp(0, U(T.max))),
+      g: T((other._g * U(T.max)).clamp(0, U(T.max))),
+      b: T((other._b * U(T.max)).clamp(0, U(T.max))),
+      a: T((other._a * U(T.max)).clamp(0, U(T.max))))
   }
 }
 
@@ -90,16 +91,19 @@ public extension Color where T: BinaryFloatingPoint {
   }
 
   init<U: BinaryFloatingPoint>(_ other: Color<U>) {
-    self._values = SIMD4<T>(other._values)
+    self._r = T(other._r)
+    self._g = T(other._g)
+    self._b = T(other._b)
+    self._a = T(other._a)
   }
 
   init<U: BinaryInteger>(_ other: Color<U>) {
     let mul = 1 / T(0xFF)
     self.init(
-      r: T(other.r) * mul,
-      g: T(other.g) * mul,
-      b: T(other.b) * mul,
-      a: T(other.a) * mul)
+      r: T(other._r) * mul,
+      g: T(other._g) * mul,
+      b: T(other._b) * mul,
+      a: T(other._a) * mul)
   }
 
   init(rgba8888 c: UInt32) {
@@ -113,26 +117,26 @@ public extension Color where T: BinaryFloatingPoint {
   func mix(_ other: Self, _ n: T) -> Self{
     let x = n.saturated
     return .init(
-      r: x.lerp(r, other.r),
-      g: x.lerp(g, other.g),
-      b: x.lerp(b, other.b),
-      a: x.lerp(a, other.a))
+      r: x.lerp(self._r, other._r),
+      g: x.lerp(self._g, other._g),
+      b: x.lerp(self._b, other._b),
+      a: x.lerp(self._a, other._a))
   }
 
   var linear: Self {
     Self(
-      r: linearFromSRGB(r),
-      g: linearFromSRGB(g),
-      b: linearFromSRGB(b),
-      a: a)
+      r: linearFromSRGB(self._r),
+      g: linearFromSRGB(self._g),
+      b: linearFromSRGB(self._b),
+      a: self._a)
   }
 
   var sRGB: Self {
     Self(
-      r: sRGBFromLinear(r),
-      g: sRGBFromLinear(g),
-      b: sRGBFromLinear(b),
-      a: a)
+      r: sRGBFromLinear(self._r),
+      g: sRGBFromLinear(self._g),
+      b: sRGBFromLinear(self._b),
+      a: self._a)
   }
 
   @inline(__always) fileprivate func linearFromSRGB(_ x: T) -> T {
@@ -156,9 +160,14 @@ public extension Color where T: BinaryFloatingPoint {
   }
 }
 
+fileprivate extension Color {
+  @inline(__always) var values: SIMD4<T> {
+    .init(self._r, self._g, self._b, self._a)
+  }
+}
 public extension SIMD4 {
-  init(_ other: Color<Scalar>) {
-    self = other.values
+  init(_ color: Color<Scalar>) {
+    self = color.values
   }
 }
 
@@ -206,4 +215,3 @@ public extension Color where T == Double {
     Self(r: Darwin.pow(r, exponent), g: Darwin.pow(g, exponent), b: Darwin.pow(b, exponent), a: a)
   }
 }
-
