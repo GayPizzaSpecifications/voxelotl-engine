@@ -76,8 +76,9 @@ struct Player {
 
     func checkCollisionRaycast(_ world: World, _ position: SIMD3<Float>, top: Bool) -> Optional<RaycastHit> {
       let dir: SIMD3<Float> = !top ? .down : .up
-      var org = !top ? self._position + .up * Self.height : self._position
-      let max: Float = Self.height + Self.epsilon * 4
+      let hHeight = Self.height * 0.5
+      var org = self._position + .up * hHeight
+      let max: Float = hHeight + Self.epsilon * 4
 
       org.x -= Self.radius
       org.z -= Self.radius
@@ -92,6 +93,7 @@ struct Player {
       return nil
     }
 
+    var testPos: SIMD3<Float>
 #if false
     self._position.y = newPosition.y
     if self._velocity.y <= 0, let hit = checkCollisionRaycast(world, self._position, top: false)
@@ -109,7 +111,7 @@ struct Player {
     }
 #else
     self._position.y = newPosition.y
-    var testPos = self._position
+    testPos = self._position
     if self._velocity.y > 0 { testPos.y -= Self.epsilon }
     if let aabb = checkCollision(world, testPos) {
       if self._velocity.y <= 0 {
@@ -246,6 +248,10 @@ struct Player {
       jumpInput = .held
     }
 
+    if Keyboard.pressed(.leftBracket, repeat: true) {
+      self._position *= 2
+    }
+
     // Read mouse input
     if Mouse.pressed(.left)  { destroy = true }
     if Mouse.pressed(.right) { place   = true }
@@ -298,15 +304,19 @@ struct Player {
     // Flying and unflying
     self._velocity.y += Float(flying).clamp(-1, 1) * Self.flySpeedCoeff * deltaTime
     // Apply physics
-    if self._onGround {
-      self.moveGround(deltaTime, world, moveDir: movement)
-    } else {
-      self.moveAir(deltaTime, world, moveDir: movement)
-    }
-    // Limit maximum velocity
-    let velocityLen = simd_length(self._velocity)
-    if velocityLen > Self.maxVelocity {
-      self._velocity = self._velocity / velocityLen * Self.maxVelocity
+    let iterations = 1
+    let iterDT = deltaTime / Float(iterations)
+    for _ in 0..<iterations {
+      if self._onGround {
+        self.moveGround(iterDT, world, moveDir: movement)
+      } else {
+        self.moveAir(iterDT, world, moveDir: movement)
+      }
+      // Limit maximum velocity
+      let velocityLen = simd_length(self._velocity)
+      if velocityLen > Self.maxVelocity {
+        self._velocity = self._velocity / velocityLen * Self.maxVelocity
+      }
     }
 
     // Jumping

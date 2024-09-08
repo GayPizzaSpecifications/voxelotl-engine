@@ -129,6 +129,20 @@ public final class Camera {
     self._dirty = [ .projection, .view, .viewProj ]
   }
 
+  //TODO: maybe make this a struct instead?
+  convenience init(_ copy: Camera) {
+    self.init(fov: copy._fieldOfView, size: copy.size, range: copy._zNearFar)
+    self._position = copy._position
+    self._rotation = copy._rotation
+    self._aspectRatio = copy._aspectRatio
+    self._viewport = copy._viewport
+    self._dirty = copy._dirty
+    self._projection = copy._projection
+    self._view = copy._view
+    self._viewProjection = copy._viewProjection
+    self._invViewProjection = copy._invViewProjection
+  }
+
   public func screenRay(_ screen: SIMD2<Float>) -> SIMD3<Float> {
 #if true
     simd_normalize(self.unproject(screen: SIMD3(screen, 1)) - self.unproject(screen: SIMD3(screen, 0)))

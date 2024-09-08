@@ -46,6 +46,7 @@ add_executable(Voxelotl MACOSX_BUNDLE
   Renderer/Environment.swift
   Renderer/Mesh.swift
   Renderer/ModelBatch.swift
+  Renderer/ChunkRenderer.swift
   Renderer/Renderer.swift
 
   # Input wrappers

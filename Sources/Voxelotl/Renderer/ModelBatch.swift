@@ -18,12 +18,12 @@ public struct ModelBatch {
     self._cam = camera
     self._env = environment
     self._prev = nil
-    self._renderer.setupBatch(material: Game.material, environment: environment, camera: camera)
+    self._renderer.setupBatch(environment: environment, camera: camera)
   }
 
   private mutating func flush() {
     assert(self._instances.count > 0)
-    self._renderer.submitBatch(mesh: self._prev.mesh, instances: self._instances)
+    self._renderer.submitBatch(mesh: self._prev.mesh, instances: self._instances, material: self._prev.material)
     self._instances.removeAll(keepingCapacity: true)
     self._prev = nil
   }

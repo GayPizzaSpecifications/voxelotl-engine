@@ -7,11 +7,18 @@ class Game: GameDelegate {
   var projection: matrix_float4x4 = .identity
   var world = World(generator: StandardWorldGenerator())
   var cubeMesh: RendererMesh?
-  var renderChunks = [ChunkID: RendererMesh?]()
   var chunkMeshGeneration: ChunkMeshGeneration!
+  var chunkRenderer: ChunkRenderer!
   var modelBatch: ModelBatch!
 
   func create(_ renderer: Renderer) {
+    self.chunkRenderer = ChunkRenderer(renderer: renderer)
+    self.chunkRenderer.material = .init(
+      ambient:  Color(rgba8888: 0x4F4F4F00).linear,
+      diffuse:  Color(rgba8888: 0xDFDFDF00).linear,
+      specular: Color(rgba8888: 0x2F2F2F00).linear,
+      gloss: 75)
+
     self.resetPlayer()
     self.generateWorld()
     self.world.waitForActiveOperations()
@@ -19,9 +26,9 @@ class Game: GameDelegate {
     self.cubeMesh = renderer.createMesh(CubeMeshBuilder.build(bound: .fromUnitCube(position: .zero, scale: .one)))
 
     renderer.clearColor = Color<Double>.black.mix(.white, 0.1).linear
-    self.chunkMeshGeneration = .init(queue: .global(qos: .userInitiated))
-    self.chunkMeshGeneration.game = self
-    self.chunkMeshGeneration.renderer = renderer
+    self.chunkMeshGeneration = .init(
+      world: world, renderer: renderer,
+      queue: .global(qos: .userInitiated))
     self.modelBatch = renderer.createModelBatch()
   }
 
@@ -33,7 +40,7 @@ class Game: GameDelegate {
 
   private func generateWorld() {
     self.world.removeAllChunks()
-    self.renderChunks.removeAll()
+    self.chunkRenderer.removeAll()
     let seed = UInt64(Arc4Random.instance.next()) | UInt64(Arc4Random.instance.next()) << 32
     printErr(seed)
 #if DEBUG
@@ -86,12 +93,6 @@ class Game: GameDelegate {
     self.world.update()
   }
 
-  public static let material = Material(
-    ambient:  Color(rgba8888: 0x4F4F4F00).linear,
-    diffuse:  Color(rgba8888: 0xDFDFDF00).linear,
-    specular: Color(rgba8888: 0x2F2F2F00).linear,
-    gloss: 75)
-
   func draw(_ renderer: Renderer, _ time: GameTime) {
     let totalTime = Float(time.total.asFloat)
 
@@ -103,24 +104,21 @@ class Game: GameDelegate {
     self.world.handleRenderDamagedChunks { id, chunk in
       self.chunkMeshGeneration.generate(id: id, chunk: chunk)
     }
-    self.chunkMeshGeneration.acceptReadyMeshes()
+    self.chunkMeshGeneration.acceptReadyMeshes(&self.chunkRenderer)
+
+    self.chunkRenderer.draw(environment: env, camera: self.camera)
 
     self.modelBatch.begin(camera: camera, environment: env)
-
-    for (id, chunk) in self.renderChunks {
-      if chunk == nil {
-        continue
-      }
-      let drawPos = id.getFloatPosition()
-      self.modelBatch.draw(.init(mesh: chunk!, material: Self.material), position: drawPos)
-    }
-
     if let position = player.rayhitPos {
       let rotation: simd_quatf =
         .init(angle: totalTime * 3.0, axis: .Y) *
         .init(angle: totalTime * 1.5, axis: .X) *
         .init(angle: totalTime * 0.7, axis: .Z)
-      self.modelBatch.draw(.init(mesh: self.cubeMesh!, material: Self.material),
+      self.modelBatch.draw(.init(mesh: self.cubeMesh!, material: .init(
+          ambient:  .black.mix(.green, 0.65).linear,
+          diffuse:  .white.mix(.black, 0.20).linear,
+          specular: .magenta.linear,
+          gloss:    250)),
         position: position, scale: 0.0725 * 0.5, rotation: rotation,
         color: .init(r: 0.5, g: 0.5, b: 1))
     }

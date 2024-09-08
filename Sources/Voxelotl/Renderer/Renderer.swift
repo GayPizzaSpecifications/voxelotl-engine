@@ -23,6 +23,7 @@ public class Renderer {
 
   private var depthTextures: [MTLTexture]
   //private var _instances: [MTLBuffer?]
+  private var _cameraPos: SIMD3<Float> = .zero, _directionalDir: SIMD3<Float> = .zero
 
   private var _encoder: MTLRenderCommandEncoder! = nil
 
@@ -381,17 +382,13 @@ public class Renderer {
     return ModelBatch(self)
   }
 
-  internal func setupBatch(material: Material, environment: Environment, camera: Camera) {
+  internal func setupBatch(environment: Environment, camera: Camera) {
     assert(self._encoder != nil, "startBatch can't be called outside of a frame being rendered")
 
     var vertUniforms = VertexShaderUniforms(projView: camera.viewProjection)
-    var fragUniforms = FragmentShaderUniforms(
-      cameraPosition: camera.position,
-      directionalLight: normalize(environment.lightDirection),
-      ambientColor:  SIMD4(material.ambient),
-      diffuseColor:  SIMD4(material.diffuse),
-      specularColor: SIMD4(material.specular),
-      specularIntensity: material.gloss)
+
+    self._cameraPos = camera.position
+    self._directionalDir = simd_normalize(environment.lightDirection)
 
     self._encoder.setCullMode(.init(environment.cullFace))
 
@@ -399,12 +396,40 @@ public class Renderer {
     self._encoder.setVertexBytes(&vertUniforms,
       length: MemoryLayout<VertexShaderUniforms>.stride,
       index: VertexShaderInputIdx.uniforms.rawValue)
+  }
+
+  internal func submit(mesh: RendererMesh, instance: ModelBatch.Instance, material: Material) {
+    assert(self._encoder != nil, "submit can't be called outside of a frame being rendered")
+    var instanceData = VertexShaderInstance(
+      model: instance.world,
+      normalModel: instance.world.inverse.transpose,
+      color: SIMD4(instance.color))
+    var fragUniforms = FragmentShaderUniforms(
+      cameraPosition: self._cameraPos,
+      directionalLight: self._directionalDir,
+      ambientColor:  SIMD4(material.ambient),
+      diffuseColor:  SIMD4(material.diffuse),
+      specularColor: SIMD4(material.specular),
+      specularIntensity: material.gloss)
+
+    self._encoder.setVertexBuffer(mesh._vertBuf, offset: 0, index: VertexShaderInputIdx.vertices.rawValue)
+    // Ideal as long as our uniforms total 4 KB or less
+    self._encoder.setVertexBytes(&instanceData,
+      length: MemoryLayout<VertexShaderInstance>.stride,
+      index: VertexShaderInputIdx.instance.rawValue)
     self._encoder.setFragmentBytes(&fragUniforms,
       length: MemoryLayout<FragmentShaderUniforms>.stride,
       index: FragmentShaderInputIdx.uniforms.rawValue)
+
+    self._encoder.drawIndexedPrimitives(
+      type:              .triangle,
+      indexCount:        mesh.numIndices,
+      indexType:         .uint16,
+      indexBuffer:       mesh._idxBuf,
+      indexBufferOffset: 0)
   }
 
-  internal func submitBatch(mesh: RendererMesh, instances: [ModelBatch.Instance]) {
+  internal func submitBatch(mesh: RendererMesh, instances: [ModelBatch.Instance], material: Material) {
     assert(self._encoder != nil, "submitBatch can't be called outside of a frame being rendered")
     let numInstances = instances.count
     assert(numInstances > 0, "submitBatch called with zero instances")
@@ -451,12 +476,22 @@ public class Renderer {
         normalModel: instance.world.inverse.transpose,
         color: SIMD4(instance.color))
     }
+    var fragUniforms = FragmentShaderUniforms(
+      cameraPosition: self._cameraPos,
+      directionalLight: self._directionalDir,
+      ambientColor:  SIMD4(material.ambient),
+      diffuseColor:  SIMD4(material.diffuse),
+      specularColor: SIMD4(material.specular),
+      specularIntensity: material.gloss)
 
     self._encoder.setVertexBuffer(mesh._vertBuf, offset: 0, index: VertexShaderInputIdx.vertices.rawValue)
     // Ideal as long as our uniforms total 4 KB or less
     self._encoder.setVertexBytes(instanceData,
       length: numInstances * MemoryLayout<VertexShaderInstance>.stride,
       index: VertexShaderInputIdx.instance.rawValue)
+    self._encoder.setFragmentBytes(&fragUniforms,
+      length: MemoryLayout<FragmentShaderUniforms>.stride,
+      index: FragmentShaderInputIdx.uniforms.rawValue)
 
     self._encoder.drawIndexedPrimitives(
       type:              .triangle,
