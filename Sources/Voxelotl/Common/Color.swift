@@ -139,7 +139,7 @@ public extension Color where T: BinaryFloatingPoint {
     if x < 0.04045 {
       x / 12.92
     } else {
-      T(pow((Double(x) + 0.055) / 1.055, 2.4))
+      T(Darwin.pow((Double(x) + 0.055) / 1.055, 2.4))
     }
   }
 
@@ -151,7 +151,7 @@ public extension Color where T: BinaryFloatingPoint {
     } else if x < 0.0031308 {
       x * 12.92
     } else {
-      T(1.055 * pow(Double(abs(x)), 1 / 2.4) - 0.055)
+      T(1.055 * Darwin.pow(Double(abs(x)), 1 / 2.4) - 0.055)
     }
   }
 }
@@ -195,3 +195,15 @@ public extension Color where T: FloatingPoint {
     }
   }
 }
+
+public extension Color where T == Float {
+  func pow(_ exponent: T) -> Self {
+    Self(r: powf(r, exponent), g: powf(g, exponent), b: powf(b, exponent), a: a)
+  }
+}
+public extension Color where T == Double {
+  func pow(_ exponent: T) -> Self {
+    Self(r: Darwin.pow(r, exponent), g: Darwin.pow(g, exponent), b: Darwin.pow(b, exponent), a: a)
+  }
+}
+

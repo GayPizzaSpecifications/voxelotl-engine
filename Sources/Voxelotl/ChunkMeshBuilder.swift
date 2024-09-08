@@ -13,7 +13,7 @@ struct ChunkMeshBuilder {
               .init(
                 position: SIMD3(position) + $0.position,
                 normal: $0.normal,
-                color: SIMD4(Color<Float>(color).linear),
+                color: SIMD4(Color<Float>(color).pow(2.2)),  //FIXME: Better sRGB approximation when I can be bothered
                 texCoord: $0.texCoord)
             })
             indices.append(contentsOf: sideIndices.map { orig + $0 })
