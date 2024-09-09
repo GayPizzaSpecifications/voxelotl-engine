@@ -94,9 +94,11 @@ target_compile_definitions(Voxelotl PRIVATE $<$<CONFIG:Debug>:DEBUG>)
 if(VOXELOTL_MOBILE_ENABLED)
   set(VOXELOTL_APPICON "AppIconMobile")
   set(VOXELOTL_RPATH "@loader_path/Frameworks")
+  set(VOXELOTL_ENTITLEMENTS "${CMAKE_CURRENT_SOURCE_DIR}/MobileVoxelotl.entitlements")
 else()
   set(VOXELOTL_APPICON "AppIcon")
   set(VOXELOTL_RPATH "@loader_path/../Frameworks")
+  set(VOXELOTL_ENTITLEMENTS "${CMAKE_CURRENT_SOURCE_DIR}/Voxelotl.entitlements")
 endif()
 
 set_target_properties(Voxelotl PROPERTIES
@@ -116,7 +118,7 @@ set_target_properties(Voxelotl PROPERTIES
   XCODE_ATTRIBUTE_INSTALL_PATH "$(LOCAL_APPS_DIR)"
   XCODE_GENERATE_SCHEME ON
   XCODE_SCHEME_ENABLE_GPU_FRAME_CAPTURE_MODE "Metal"
-  XCODE_ATTRIBUTE_CODE_SIGN_ENTITLEMENTS "${CMAKE_CURRENT_SOURCE_DIR}/Voxelotl.entitlements"
+  XCODE_ATTRIBUTE_CODE_SIGN_ENTITLEMENTS "${VOXELOTL_ENTITLEMENTS}"
   MACOSX_BUNDLE_COPYRIGHT "© 2024 Gay Pizza Specifications")
 
 if(VOXELOTL_MOBILE_ENABLED)
