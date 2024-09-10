@@ -14,9 +14,9 @@ class Game: GameDelegate {
   func create(_ renderer: Renderer) {
     self.chunkRenderer = ChunkRenderer(renderer: renderer)
     self.chunkRenderer.material = .init(
-      ambient:  Color(rgba8888: 0x4F4F4F00).linear,
-      diffuse:  Color(rgba8888: 0xDFDFDF00).linear,
-      specular: Color(rgba8888: 0x2F2F2F00).linear,
+      ambient:  Color(rgb888: 0x4F4F4F).linear,
+      diffuse:  Color(rgb888: 0xDFDFDF).linear,
+      specular: Color(rgb888: 0x2F2F2F).linear,
       gloss: 75)
 
     self.resetPlayer()

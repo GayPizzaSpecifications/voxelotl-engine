@@ -10,14 +10,15 @@ fileprivate let depthFormat: MTLPixelFormat = .depth32Float
 
 public class Renderer {
   private var device: MTLDevice
-  private var layer: CAMetalLayer
+  private var _layer: CAMetalLayer
   private var backBufferSize: Size<Int>
   private var _clearColor: Color<Double>
   private var _aspectRatio: Float
   private var queue: MTLCommandQueue
   private var lib: MTLLibrary
+  private var _defaultShader: Shader, _shader2D: Shader
   private let passDescription = MTLRenderPassDescriptor()
-  private var pso: MTLRenderPipelineState
+  private var _psos: [PipelineOptions: MTLRenderPipelineState]
   private var depthStencilState: MTLDepthStencilState
   private let _defaultStorageMode: MTLResourceOptions
 
@@ -54,7 +55,7 @@ public class Renderer {
   }
 
   internal init(layer metalLayer: CAMetalLayer, size: Size<Int>) throws {
-    self.layer = metalLayer
+    self._layer = metalLayer
 
     // Select best Metal device
     guard let device = Self.createMetalDevice() else {
@@ -74,8 +75,8 @@ public class Renderer {
     self._defaultStorageMode = .storageModeShared
 #endif
 
-    layer.device = device
-    layer.pixelFormat = colorFormat
+    self._layer.device = device
+    self._layer.pixelFormat = colorFormat
 
     // Setup command queue
     guard let queue = device.makeCommandQueue() else {
@@ -116,20 +117,16 @@ public class Renderer {
     } catch {
       throw RendererError.initFailure("Metal shader compilation failed:\n\(error.localizedDescription)")
     }
-    let vertexProgram   = lib.makeFunction(name: "vertexMain")
-    let fragmentProgram = lib.makeFunction(name: "fragmentMain")
+    self._defaultShader = .init(
+      vertexProgram:   lib.makeFunction(name: "vertexMain"),
+      fragmentProgram: lib.makeFunction(name: "fragmentMain"))
+    self._shader2D = .init(
+      vertexProgram:   lib.makeFunction(name: "vertex2DMain"),
+      fragmentProgram: lib.makeFunction(name: "fragment2DMain"))
 
-    // Set up pipeline state
-    let pipeDescription = MTLRenderPipelineDescriptor()
-    pipeDescription.vertexFunction   = vertexProgram
-    pipeDescription.fragmentFunction = fragmentProgram
-    pipeDescription.colorAttachments[0].pixelFormat = layer.pixelFormat
-    pipeDescription.depthAttachmentPixelFormat = depthFormat
-    do {
-      self.pso = try device.makeRenderPipelineState(descriptor: pipeDescription)
-    } catch {
-      throw RendererError.initFailure("Failed to create pipeline state: \(error.localizedDescription)")
-    }
+    // Set up initial pipeline state
+    self._psos = try [ .init(colorFormat: self._layer.pixelFormat, depthFormat: depthFormat, shader: self._defaultShader, blendFunc: .off) ]
+      .map { [$0: try $0.createPipeline(device)] }[0]
 
     // Create a default texture
     do {
@@ -153,6 +150,16 @@ public class Renderer {
 
   deinit {
     
+  }
+
+  fileprivate func usePipeline(options pipeOpts: PipelineOptions) throws {
+    if let exists = self._psos[pipeOpts] {
+      self._encoder.setRenderPipelineState(exists)
+    } else {
+      let new = try pipeOpts.createPipeline(self.device)
+      self._encoder.setRenderPipelineState(new)
+      self._psos[pipeOpts] = new
+    }
   }
 
   func createMesh(_ mesh: Mesh<VertexPositionNormalColorTexcoord, UInt16>) -> RendererMesh? {
@@ -335,11 +342,11 @@ public class Renderer {
 
   func newFrame(_ frameFunc: (Renderer) -> Void) throws {
     try autoreleasepool {
-      guard let rt = layer.nextDrawable() else {
+      guard let rt = self._layer.nextDrawable() else {
         throw RendererError.drawFailure("Failed to get next drawable render target")
       }
 
-      passDescription.colorAttachments[0].clearColor  = MTLClearColor(self._clearColor)
+      passDescription.colorAttachments[0].clearColor = MTLClearColor(self._clearColor)
       passDescription.colorAttachments[0].texture = rt.texture
       passDescription.depthAttachment.texture = self.depthTextures[self.currentFrame]
 
@@ -359,7 +366,6 @@ public class Renderer {
 
       encoder.setFrontFacing(.counterClockwise)  // OpenGL default
       encoder.setViewport(Self.makeViewport(rect: self.frame))
-      encoder.setRenderPipelineState(pso)
       encoder.setDepthStencilState(depthStencilState)
       encoder.setFragmentTexture(cubeTexture ?? defaultTexture, index: 0)
 
@@ -383,7 +389,15 @@ public class Renderer {
   }
 
   internal func setupBatch(environment: Environment, camera: Camera) {
-    assert(self._encoder != nil, "startBatch can't be called outside of a frame being rendered")
+    assert(self._encoder != nil, "setupBatch can't be called outside of a frame being rendered")
+
+    do {
+      try self.usePipeline(options: PipelineOptions(
+        colorFormat: self._layer.pixelFormat, depthFormat: depthFormat,
+        shader: self._defaultShader, blendFunc: .off))
+    } catch {
+      printErr(error)
+    }
 
     var vertUniforms = VertexShaderUniforms(projView: camera.viewProjection)
 
@@ -520,7 +534,7 @@ public struct RendererMesh: Hashable {
   }
 }
 
-extension MTLClearColor {
+fileprivate extension MTLClearColor {
   init(_ color: Color<Double>) {
     self.init(red: color.r, green: color.g, blue: color.b, alpha: color.a)
   }
@@ -532,6 +546,127 @@ fileprivate extension MTLCullMode {
     case .none: .none
     case .front: .front
     case .back: .back
+    }
+  }
+}
+
+fileprivate struct Shader: Hashable {
+  let vertexProgram: (any MTLFunction)?, fragmentProgram: (any MTLFunction)?
+
+  static func == (lhs: Shader, rhs: Shader) -> Bool {
+    lhs.vertexProgram?.hash == rhs.vertexProgram?.hash && lhs.fragmentProgram?.hash == rhs.fragmentProgram?.hash
+  }
+
+  public func hash(into hasher: inout Hasher) {
+    hasher.combine(self.vertexProgram?.hash ?? 0)
+    hasher.combine(self.fragmentProgram?.hash ?? 0)
+  }
+}
+
+fileprivate struct PipelineOptions: Hashable {
+  let colorFormat: MTLPixelFormat, depthFormat: MTLPixelFormat
+  let shader: Shader
+  let blendFunc: BlendFunc
+}
+
+fileprivate extension PipelineOptions {
+  func createPipeline(_ device: MTLDevice) throws -> MTLRenderPipelineState {
+    let pipeDescription = MTLRenderPipelineDescriptor()
+    pipeDescription.vertexFunction   = self.shader.vertexProgram
+    pipeDescription.fragmentFunction = self.shader.fragmentProgram
+    pipeDescription.colorAttachments[0].pixelFormat = self.colorFormat
+    self.blendFunc.setBlend(colorAttachment: &pipeDescription.colorAttachments[0])
+    pipeDescription.depthAttachmentPixelFormat = self.depthFormat
+    do {
+      return try device.makeRenderPipelineState(descriptor: pipeDescription)
+    } catch {
+      throw RendererError.initFailure("Failed to create pipeline state: \(error.localizedDescription)")
+    }
+  }
+}
+
+fileprivate extension BlendFunc {
+  func setBlend(colorAttachment: inout MTLRenderPipelineColorAttachmentDescriptor) {
+    switch self {
+    case .off:
+      colorAttachment.isBlendingEnabled = false
+    case .on(let srcFactor, let dstFactor, let equation):
+      colorAttachment.isBlendingEnabled = true
+      colorAttachment.rgbBlendOperation = .init(equation)
+      colorAttachment.alphaBlendOperation = .init(equation)
+      colorAttachment.sourceRGBBlendFactor = .init(srcFactor)
+      colorAttachment.sourceAlphaBlendFactor = .init(srcFactor)
+      colorAttachment.destinationRGBBlendFactor = .init(dstFactor)
+      colorAttachment.destinationAlphaBlendFactor = .init(dstFactor)
+    case .separate(let srcColor, let srcAlpha, let dstColor, let dstAlpha, let equColor, let equAlpha):
+      colorAttachment.isBlendingEnabled = true
+      colorAttachment.rgbBlendOperation = .init(equColor)
+      colorAttachment.alphaBlendOperation = .init(equAlpha)
+      colorAttachment.sourceRGBBlendFactor = .init(srcColor)
+      colorAttachment.sourceAlphaBlendFactor = .init(srcAlpha)
+      colorAttachment.destinationRGBBlendFactor = .init(dstColor)
+      colorAttachment.destinationAlphaBlendFactor = .init(dstAlpha)
+    }
+  }
+}
+
+fileprivate extension MTLBlendOperation {
+  init(_ equation: BlendFuncEquation) {
+    self = switch equation {
+    case .add:             .add
+    case .subtract:        .subtract
+    case .reverseSubtract: .reverseSubtract
+    case .min:             .min
+    case .max:             .max
+    }
+  }
+}
+
+fileprivate extension MTLBlendFactor {
+  init(_ source: BlendFuncSourceFactor) {
+    self = switch source {
+    case .zero:                  .zero
+    case .one:                   .one
+    case .srcColor:              .sourceColor
+    case .oneMinusSrcColor:      .oneMinusSourceColor
+    case .srcAlpha:              .sourceAlpha
+    case .oneMinusSrcAlpha:      .oneMinusSourceAlpha
+    case .dstColor:              .destinationColor
+    case .oneMinusDstColor:      .oneMinusDestinationColor
+    case .dstAlpha:              .destinationAlpha
+    case .oneMinusDstAlpha:      .oneMinusDestinationAlpha
+    case .srcAlphaSaturate:      .sourceAlphaSaturated
+    /*
+    case .constantColor:         .blendColor
+    case .oneMinusConstantColor: .oneMinusBlendColor
+    case .constantAlpha:         .blendAlpha
+    case .oneMinusConstantAlpha: .oneMinusBlendAlpha
+    */
+    case .src1Color:             .source1Color
+    case .oneMinusSrc1Color:     .oneMinusSource1Color
+    case .src1Alpha:             .source1Alpha
+    case .oneMinusSrc1Alpha:     .oneMinusSource1Alpha
+    }
+  }
+
+  init(_ destination: BlendFuncDestinationFactor) {
+    self = switch destination {
+    case .zero:                  .zero
+    case .one:                   .one
+    case .srcColor:              .sourceColor
+    case .oneMinusSrcColor:      .oneMinusSourceColor
+    case .srcAlpha:              .sourceAlpha
+    case .oneMinusSrcAlpha:      .oneMinusSourceAlpha
+    case .dstColor:              .destinationColor
+    case .oneMinusDstColor:      .oneMinusDestinationColor
+    case .dstAlpha:              .destinationAlpha
+    case .oneMinusDstAlpha:      .oneMinusDestinationAlpha
+    /*
+    case .constantColor:         .blendColor
+    case .oneMinusConstantColor: .oneMinusBlendColor
+    case .constantAlpha:         .blendAlpha
+    case .oneMinusConstantAlpha: .oneMinusBlendAlpha
+    */
     }
   }
 }

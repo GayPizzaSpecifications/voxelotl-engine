@@ -46,6 +46,8 @@ add_executable(Voxelotl MACOSX_BUNDLE
   Renderer/Environment.swift
   Renderer/Mesh.swift
   Renderer/ModelBatch.swift
+  Renderer/BlendMode.swift
+  Renderer/BlendFunc.swift
   Renderer/ChunkRenderer.swift
   Renderer/Renderer.swift
 
