@@ -49,6 +49,13 @@ add_executable(Voxelotl MACOSX_BUNDLE
   Renderer/BlendMode.swift
   Renderer/BlendFunc.swift
   Renderer/ChunkRenderer.swift
+  Renderer/Metal/BlendFuncExtension.swift
+  Renderer/Metal/ColorExtension.swift
+  Renderer/Metal/EnvironmentExtension.swift
+  Renderer/Metal/PipelineOptions.swift
+  Renderer/Metal/Shader.swift
+  Renderer/Metal/RendererMesh.swift
+  Renderer/RendererError.swift
   Renderer/Renderer.swift
 
   # Input wrappers
@@ -144,4 +151,5 @@ source_group("Source Files\\Noise" REGULAR_EXPRESSION "Noise/")
 source_group("Source Files\\Math" REGULAR_EXPRESSION "Math/")
 source_group("Source Files\\Input" REGULAR_EXPRESSION "Input/")
 source_group("Source Files\\Renderer" REGULAR_EXPRESSION "Renderer/")
+source_group("Source Files\\Renderer\\Metal" REGULAR_EXPRESSION "Renderer/Metal/")
 source_group("Source Files\\Generator" REGULAR_EXPRESSION "Generator/")
