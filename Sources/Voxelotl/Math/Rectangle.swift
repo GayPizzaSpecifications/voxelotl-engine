@@ -1,16 +1,16 @@
-public struct Rect<T: AdditiveArithmetic>: Equatable {
-  var x: T, y: T, w: T, h: T
+public struct Rect<T: AdditiveArithmetic & Hashable>: Hashable {
+  public var x: T, y: T, w: T, h: T
 
-  var origin: Point<T> {
+  public var origin: Point<T> {
     get { .init(self.x, self.y) }
     set(point) { self.x = point.x; self.y = point.y }
   }
-  var size: Size<T> {
+  public var size: Size<T> {
     get { .init(self.w, self.h) }
     set(size) { self.w = size.w; self.h = size.h }
   }
 
-  static var zero: Self { .init(origin: .zero, size: .zero) }
+  public static var zero: Self { .init(origin: .zero, size: .zero) }
 
   init(x: T, y: T, width: T, height: T) {
     self.x = x
@@ -19,7 +19,7 @@ public struct Rect<T: AdditiveArithmetic>: Equatable {
     self.h = height
   }
 
-  init(origin: Point<T>, size: Size<T>) {
+  public init(origin: Point<T>, size: Size<T>) {
     self.x = origin.x
     self.y = origin.y
     self.w = size.w
@@ -36,4 +36,22 @@ public extension Rect where T: AdditiveArithmetic {
   var right: T { x + w }
   var up: T { y }
   var down: T { y + h }
+}
+
+public extension Rect where T: BinaryInteger {
+  init<O: BinaryInteger>(_ other: Rect<O>) {
+    self.init(origin: Point<T>(other.origin), size: Size<T>(other.size))
+  }
+  init<O: BinaryFloatingPoint>(_ other: Rect<O>) {
+    self.init(origin: Point<T>(other.origin), size: Size<T>(other.size))
+  }
+}
+
+public extension Rect where T: BinaryFloatingPoint {
+  init<O: BinaryInteger>(_ other: Rect<O>) {
+    self.init(origin: Point<T>(other.origin), size: Size<T>(other.size))
+  }
+  init<O: BinaryFloatingPoint>(_ other: Rect<O>) {
+    self.init(origin: Point<T>(other.origin), size: Size<T>(other.size))
+  }
 }
