@@ -45,4 +45,16 @@ typedef struct {
   float specularIntensity;
 } FragmentShaderUniforms;
 
+#pragma mark - UI & 2D Shader
+
+typedef struct {
+  vector_float2 position;
+  vector_float2 texCoord;
+  vector_float4 color;
+} Vertex2D;
+
+typedef struct {
+  matrix_float4x4 projection;
+} Shader2DUniforms;
+
 #endif//SHADERTYPES_H

@@ -21,3 +21,9 @@ public struct VertexPositionNormalColorTexcoord: Vertex {
   var color:    SIMD4<Float>
   var texCoord: SIMD2<Float>
 }
+
+public struct VertexPosition2DTexcoordColor: Vertex {
+  var position: SIMD2<Float>
+  var texCoord: SIMD2<Float>
+  var color:    SIMD4<Float>
+}

@@ -22,3 +22,9 @@ extension Duration {
     Double(components.seconds) + Double(components.attoseconds) * 1e-18
   }
 }
+
+extension Float {
+  public init(_ value: Duration) {
+    self = Float(value.asFloat)
+  }
+}

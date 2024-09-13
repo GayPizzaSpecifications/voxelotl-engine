@@ -19,7 +19,7 @@ public class Renderer {
   private var _defaultShader: Shader, _shader2D: Shader
   private let passDescription = MTLRenderPassDescriptor()
   private var _psos: [PipelineOptions: MTLRenderPipelineState]
-  private var depthStencilState: MTLDepthStencilState
+  private var _depthStencilEnabled: MTLDepthStencilState, _depthStencilDisabled: MTLDepthStencilState
   private let _defaultStorageMode: MTLResourceOptions
 
   private var depthTextures: [MTLTexture]
@@ -28,11 +28,14 @@ public class Renderer {
 
   private var _encoder: MTLRenderCommandEncoder! = nil
 
-  private var defaultTexture: MTLTexture
-  private var cubeTexture: MTLTexture? = nil
+  private var defaultTexture: RendererTexture2D
+  private var cubeTexture: RendererTexture2D? = nil
 
   private let inFlightSemaphore = DispatchSemaphore(value: numFramesInFlight)
-  private var currentFrame = 0
+  private var _currentFrame = 0
+
+  internal var currentFrame: Int { self._currentFrame }
+  internal var isManagedStorage: Bool { self._defaultStorageMode == .storageModeManaged }
 
   var frame: Rect<Int> { .init(origin: .zero, size: self.backBufferSize) }
   var aspectRatio: Float { self._aspectRatio }
@@ -101,15 +104,16 @@ public class Renderer {
       return depthStencilTexture
     }
 
-    //self._instances = [MTLBuffer?](repeating: nil, count: numFramesInFlight)
-
     let stencilDepthDescription = MTLDepthStencilDescriptor()
     stencilDepthDescription.depthCompareFunction = .less  // OpenGL default
     stencilDepthDescription.isDepthWriteEnabled  = true
-    guard let depthStencilState = device.makeDepthStencilState(descriptor: stencilDepthDescription) else {
+    guard let depthStencilEnabled = device.makeDepthStencilState(descriptor: stencilDepthDescription),
+      let depthStencilDisabled = device.makeDepthStencilState(descriptor: MTLDepthStencilDescriptor())
+    else {
       throw RendererError.initFailure("Failed to create depth stencil state")
     }
-    self.depthStencilState = depthStencilState
+    self._depthStencilEnabled = depthStencilEnabled
+    self._depthStencilDisabled = depthStencilDisabled
 
     // Create shader library & grab functions
     do {
@@ -226,9 +230,51 @@ public class Renderer {
     }
   }
 
+  internal func createDynamicMesh<VertexType: Vertex, IndexType: UnsignedInteger>(
+    vertexCapacity: Int, indexCapacity: Int
+  ) -> RendererDynamicMesh<VertexType, IndexType>? {
+    let vertexBuffers: [MTLBuffer], indexBuffers: [MTLBuffer]
+    do {
+      let byteCapacity = MemoryLayout<VertexType>.stride * vertexCapacity
+      vertexBuffers = try Self.createDynamicBuffer(self.device, capacity: byteCapacity, self._defaultStorageMode)
+    } catch {
+      printErr("Failed to create vertex buffer")
+      return nil
+    }
+    do {
+      let byteCapacity = MemoryLayout<IndexType>.stride * indexCapacity
+      indexBuffers =  try Self.createDynamicBuffer(self.device, capacity: byteCapacity, self._defaultStorageMode)
+    } catch {
+      printErr("Failed to create index buffer")
+      return nil
+    }
+    return .init(renderer: self, vertexBuffers, indexBuffers)
+  }
+
+  private static func createDynamicBuffer(_ device: MTLDevice, capacity: Int, _ transitoryOpt: MTLResourceOptions
+  ) throws -> [MTLBuffer] {
+    try autoreleasepool {
+      try (0..<numFramesInFlight).map { _ in
+        guard let buffer = device.makeBuffer(length: capacity, options: transitoryOpt) else {
+          throw RendererError.initFailure("Failed to create buffer")
+        }
+        return buffer
+      }
+    }
+  }
+
+  public func loadTexture(resourcePath path: String) -> RendererTexture2D? {
+    do {
+      return try Self.loadTexture(self.device, self.queue, resourcePath: path, self._defaultStorageMode)
+    } catch {
+      printErr(error)
+      return nil
+    }
+  }
+
   static func loadTexture(_ device: MTLDevice, _ queue: MTLCommandQueue, resourcePath path: String,
     _ transitoryOpt: MTLResourceOptions
-  ) throws -> MTLTexture {
+  ) throws -> RendererTexture2D {
     do {
       return try loadTexture(device, queue, url: Bundle.main.getResource(path), transitoryOpt)
     } catch ContentError.resourceNotFound(let message) {
@@ -238,7 +284,7 @@ public class Renderer {
 
   static func loadTexture(_ device: MTLDevice, _ queue: MTLCommandQueue, url imageUrl: URL,
     _ transitoryOpt: MTLResourceOptions
-  ) throws -> MTLTexture {
+  ) throws -> RendererTexture2D {
     do {
       return try loadTexture(device, queue, image2D: try NSImageLoader.open(url: imageUrl), transitoryOpt)
     } catch ImageLoaderError.openFailed(let message) {
@@ -248,7 +294,7 @@ public class Renderer {
 
   static func loadTexture(_ device: MTLDevice, _ queue: MTLCommandQueue, image2D image: Image2D,
     _ transitoryOpt: MTLResourceOptions
-  ) throws -> MTLTexture {
+  ) throws -> RendererTexture2D {
     try autoreleasepool {
       let texDesc = MTLTextureDescriptor()
       texDesc.width  = image.width
@@ -292,7 +338,7 @@ public class Renderer {
       }
       cmdBuffer.commit()
 
-      return newTexture
+      return .init(metalTexture: newTexture, size: .init(image.width, image.height))
     }
   }
 
@@ -348,7 +394,7 @@ public class Renderer {
 
       passDescription.colorAttachments[0].clearColor = MTLClearColor(self._clearColor)
       passDescription.colorAttachments[0].texture = rt.texture
-      passDescription.depthAttachment.texture = self.depthTextures[self.currentFrame]
+      passDescription.depthAttachment.texture = self.depthTextures[self._currentFrame]
 
       // Lock the semaphore here if too many frames are "in flight"
       _ = inFlightSemaphore.wait(timeout: .distantFuture)
@@ -366,8 +412,7 @@ public class Renderer {
 
       encoder.setFrontFacing(.counterClockwise)  // OpenGL default
       encoder.setViewport(Self.makeViewport(rect: self.frame))
-      encoder.setDepthStencilState(depthStencilState)
-      encoder.setFragmentTexture(cubeTexture ?? defaultTexture, index: 0)
+      encoder.setFragmentTexture(cubeTexture?._textureBuffer ?? defaultTexture._textureBuffer, index: 0)
 
       self._encoder = encoder
       frameFunc(self)
@@ -377,15 +422,19 @@ public class Renderer {
       commandBuf.present(rt)
       commandBuf.commit()
 
-      self.currentFrame &+= 1
-      if self.currentFrame == numFramesInFlight {
-        self.currentFrame = 0
+      self._currentFrame &+= 1
+      if self._currentFrame == numFramesInFlight {
+        self._currentFrame = 0
       }
     }
   }
 
   func createModelBatch() -> ModelBatch {
     return ModelBatch(self)
+  }
+
+  func createSpriteBatch() -> SpriteBatch {
+    return SpriteBatch(self)
   }
 
   internal func setupBatch(environment: Environment, camera: Camera) {
@@ -404,12 +453,57 @@ public class Renderer {
     self._cameraPos = camera.position
     self._directionalDir = simd_normalize(environment.lightDirection)
 
+    self._encoder.setDepthStencilState(self._depthStencilEnabled)
     self._encoder.setCullMode(.init(environment.cullFace))
 
     // Ideal as long as our uniforms total 4 KB or less
     self._encoder.setVertexBytes(&vertUniforms,
       length: MemoryLayout<VertexShaderUniforms>.stride,
       index: VertexShaderInputIdx.uniforms.rawValue)
+  }
+
+  internal func setupBatch(blendMode: BlendMode, frame: Rect<Float>) {
+    assert(self._encoder != nil, "setupBatch can't be called outside of a frame being rendered")
+
+    do {
+      try self.usePipeline(options: PipelineOptions(
+        colorFormat: self._layer.pixelFormat, depthFormat: depthFormat,
+        shader: self._shader2D, blendFunc: blendMode.function))
+    } catch {
+      printErr(error)
+    }
+
+    self._encoder.setDepthStencilState(self._depthStencilDisabled)
+    self._encoder.setCullMode(.none)
+
+    var uniforms = Shader2DUniforms(projection: .orthographic(
+      left: frame.left, right: frame.right,
+      bottom: frame.down, top: frame.up,
+      near: 1, far: -1))
+
+    // Ideal as long as our uniforms total 4 KB or less
+    self._encoder.setVertexBytes(&uniforms,
+      length: MemoryLayout<Shader2DUniforms>.stride,
+      index: VertexShaderInputIdx.uniforms.rawValue)
+  }
+
+  internal func submit(
+    mesh: RendererDynamicMesh<SpriteBatch.VertexType, SpriteBatch.IndexType>,
+    texture: RendererTexture2D?,
+    offset: Int, count: Int
+  ) {
+    assert(self._encoder != nil, "submit can't be called outside of a frame being rendered")
+
+    self._encoder.setFragmentTexture(texture?._textureBuffer ?? defaultTexture._textureBuffer, index: 0)
+    self._encoder.setVertexBuffer(mesh._vertBufs[self._currentFrame],
+      offset: 0,
+      index: VertexShaderInputIdx.vertices.rawValue)
+    self._encoder.drawIndexedPrimitives(
+      type:              .triangle,
+      indexCount:        count,
+      indexType:         .uint16,  // Careful!
+      indexBuffer:       mesh._idxBufs[self._currentFrame],
+      indexBufferOffset: MemoryLayout<SpriteBatch.IndexType>.stride * offset)
   }
 
   internal func submit(mesh: RendererMesh, instance: ModelBatch.Instance, material: Material) {
@@ -452,16 +546,16 @@ public class Renderer {
     let instancesBytes = numInstances * MemoryLayout<VertexShaderInstance>.stride
 
     // (Re)create instance buffer if needed
-    if self._instances[self.currentFrame] == nil || instancesBytes > self._instances[self.currentFrame]!.length {
+    if self._instances[self._currentFrame] == nil || instancesBytes > self._instances[self._currentFrame]!.length {
       guard let instanceBuffer = self.device.makeBuffer(
         length: instancesBytes,
         options: self._defaultStorageMode)
       else {
         fatalError("Failed to (re)create instance buffer")
       }
-      self._instances[self.currentFrame] = instanceBuffer
+      self._instances[self._currentFrame] = instanceBuffer
     }
-    let instanceBuffer = self._instances[self.currentFrame]!
+    let instanceBuffer = self._instances[self._currentFrame]!
 
     // Convert & upload instance data to the GPU
     //FIXME: currently will misbehave if batch is called more than once

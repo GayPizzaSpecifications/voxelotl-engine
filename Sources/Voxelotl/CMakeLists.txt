@@ -1,11 +1,13 @@
-add_executable(Voxelotl MACOSX_BUNDLE
+set(SOURCES
   # Resources
   Assets.xcassets
   test.png
+  wireshark.png
 
   # Shaders
   shadertypes.h
   shader.metal
+  shader2D.metal
 
   # Common utility library
   Common/ConcurrentDictionary.swift
@@ -48,6 +50,8 @@ add_executable(Voxelotl MACOSX_BUNDLE
   Renderer/ModelBatch.swift
   Renderer/BlendMode.swift
   Renderer/BlendFunc.swift
+  Renderer/Sprite.swift
+  Renderer/SpriteBatch.swift
   Renderer/ChunkRenderer.swift
   Renderer/Metal/BlendFuncExtension.swift
   Renderer/Metal/ColorExtension.swift
@@ -55,6 +59,8 @@ add_executable(Voxelotl MACOSX_BUNDLE
   Renderer/Metal/PipelineOptions.swift
   Renderer/Metal/Shader.swift
   Renderer/Metal/RendererMesh.swift
+  Renderer/Metal/RendererDynamicMesh.swift
+  Renderer/Metal/RendererTexture2D.swift
   Renderer/RendererError.swift
   Renderer/Renderer.swift
 
@@ -80,6 +86,7 @@ add_executable(Voxelotl MACOSX_BUNDLE
   Camera.swift
   Player.swift
   Game.swift
+  SpriteTestGame.swift
 
   # Core application classes
   GameDelegate.swift
@@ -90,12 +97,16 @@ add_executable(Voxelotl MACOSX_BUNDLE
   main.m
 )
 
-set_source_files_properties(
-  shader.metal PROPERTIES
-  LANGUAGE METAL
-  COMPILE_OPTIONS "-I${PROJECT_SOURCE_DIR}"
-)
+foreach (SOURCE IN LISTS SOURCES)
+  if (SOURCE MATCHES "\\.metal$")
+    set_source_files_properties(
+      "${SOURCE}" PROPERTIES
+      LANGUAGE METAL
+      COMPILE_OPTIONS "-I${PROJECT_SOURCE_DIR}")
+  endif()
+endforeach()
 
+add_executable(Voxelotl MACOSX_BUNDLE ${SOURCES})
 target_include_directories(Voxelotl PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(Voxelotl PRIVATE SDLSwift)
 target_compile_definitions(Voxelotl PRIVATE $<$<CONFIG:Debug>:DEBUG>)
@@ -140,7 +151,11 @@ endif()
 
 set_source_files_properties(Assets.xcassets PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
 set_source_files_properties(module.modulemap PROPERTIES MACOSX_PACKAGE_LOCATION Modules)
-set_source_files_properties(test.png PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+foreach (RESOURCE IN LISTS SOURCES)
+  if (RESOURCE MATCHES "\\.png$")
+    set_source_files_properties("${RESOURCE}" PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+  endif()
+endforeach()
 
 #TODO: should use TREE mode as documented in https://cmake.org/cmake/help/latest/command/source_group.html
 source_group("Resources" FILES Assets.xcassets test.png)

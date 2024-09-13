@@ -5,7 +5,7 @@ import Foundation
     Thread.current.qualityOfService = .userInteractive
 
     let app = Application(
-      delegate: Game(),
+      delegate: SpriteTestGame(),
       configuration: ApplicationConfiguration(
       frame: Size(1280, 720),
       title: "Voxelotl Demo",
