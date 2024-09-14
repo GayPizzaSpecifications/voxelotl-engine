@@ -46,7 +46,7 @@ public struct SpriteBatch {
 
   public mutating func draw(_ texture: RendererTexture2D, position: SIMD2<Float>) {
     assert(self._active != .inactive, "call to SpriteBatch.draw without calling begin")
-    self.drawQuad(texture, position: position, size: Size<Float>(texture.size))
+    self.drawQuad(texture, .positions(position, Size<Float>(texture.size)))
   }
 
   public mutating func draw(_ texture: RendererTexture2D, position: SIMD2<Float>,
@@ -58,12 +58,13 @@ public struct SpriteBatch {
   ) {
     assert(self._active != .inactive, "call to SpriteBatch.draw without calling begin")
     let size = Size<Float>(texture.size)
+    let texCoord = Quad.texcoords(flip)
     let color = color.linear
     if angle != 0 {
-      let bias = SIMD2(origin) / SIMD2(size)
-      self.drawQuad(texture, position: position, angle: angle, size: size * scale, offset: bias, color: color)
+      let bias = origin / SIMD2(size)
+      self.drawQuad(texture, .positions(position, size * scale, angle, bias), texCoord, color: color)
     } else {
-      self.drawQuad(texture, position: position - origin, size: size * scale, color: color)
+      self.drawQuad(texture, .positions(position - origin, size * scale), texCoord, color: color)
     }
   }
 
@@ -76,128 +77,152 @@ public struct SpriteBatch {
   ) {
     assert(self._active != .inactive, "call to SpriteBatch.draw without calling begin")
     let size = Size<Float>(texture.size)
+    let texCoord = Quad.texcoords(flip)
     let color = color.linear
     if angle != 0 {
       let bias = SIMD2(origin) / SIMD2(size)
-      self.drawQuad(texture, position: position, angle: angle, size: size * Size(scalar: scale), offset: bias, color: color)
+      self.drawQuad(texture, .positions(position, size * scale, angle, bias), texCoord, color: color)
     } else {
-      self.drawQuad(texture, position: position - origin, size: size * scale, color: color)
+      self.drawQuad(texture, .positions(position, size * scale), texCoord, color: color)
     }
   }
 
   public mutating func draw(_ texture: RendererTexture2D, destination: Rect<Float>?) {
     assert(self._active != .inactive, "call to SpriteBatch.draw without calling begin")
-    let rect = destination ?? self.viewport ?? Rect<Float>(self._renderer.frame)
-    self.drawQuad(texture,
-      p00: SIMD2(rect.left,  rect.up),   p10: SIMD2(rect.right, rect.up),
-      p01: SIMD2(rect.left,  rect.down), p11: SIMD2(rect.right, rect.down))
+    self.drawQuad(texture, .positions(destination ?? self.viewport ?? Rect<Float>(self._renderer.frame)))
+  }
+
+  public mutating func draw(_ texture: RendererTexture2D, destination: Rect<Float>?,
+    angle: Float = 0.0, center: Point<Float>? = .zero, flip: Sprite.Flip = .none, color: Color<Float> = .white
+  ) {
+    assert(self._active != .inactive, "call to SpriteBatch.draw without calling begin")
+    let dst = destination ?? self.viewport ?? Rect<Float>(self._renderer.frame)
+    if dst.size.w.isZero || dst.size.h.isZero { return }
+    let texCoord = Quad.texcoords(flip)
+    let color = color.linear
+    if angle != 0 {
+      let origin = SIMD2(center ?? Point(dst.size * 0.5))
+      let bias = origin / SIMD2(dst.size)
+      self.drawQuad(texture, .positions(SIMD2(dst.origin) + origin, dst.size, angle, bias), texCoord, color: color)
+    } else {
+      self.drawQuad(texture, .positions(dst), texCoord, color: color)
+    }
   }
 
   public mutating func draw(_ texture: RendererTexture2D, transform: simd_float3x3) {
     assert(self._active != .inactive, "call to SpriteBatch.draw without calling begin")
-    let w = Float(texture.size.w), h = Float(texture.size.h)
-    self.drawQuad(texture,
-      p00: (transform * .init(0, 0, 1)).xy,
-      p10: (transform * .init(w, 0, 1)).xy,
-      p01: (transform * .init(0, h, 1)).xy,
-      p11: (transform * .init(w, h, 1)).xy)
+    self.drawQuad(texture, .positions(transform, Size<Float>(texture.size)))
   }
 
   public mutating func draw(_ texture: RendererTexture2D, transform: simd_float3x3,
-    flip: Sprite.Flip = .none,
-    color: Color<Float> = .white
+    flip: Sprite.Flip = .none, color: Color<Float> = .white
   ) {
     assert(self._active != .inactive, "call to SpriteBatch.draw without calling begin")
-    let w = Float(texture.size.w), h = Float(texture.size.h)
     self.drawQuad(texture,
-      p00: (transform * .init(0, 0, 1)).xy,
-      p10: (transform * .init(w, 0, 1)).xy,
-      p01: (transform * .init(0, h, 1)).xy,
-      p11: (transform * .init(w, h, 1)).xy,
-      flip: flip, color: color.linear)
+      .positions(transform, Size<Float>(texture.size)),
+      .texcoords(flip), color: color.linear)
   }
 
   public mutating func draw(_ texture: RendererTexture2D, source: Rect<Float>, position: SIMD2<Float>) {
     assert(self._active != .inactive, "call to SpriteBatch.draw without calling begin")
-    let size = source.size
-    self.drawQuad(texture, source,
-      p00: .init(position.x, position.y),
-      p10: .init(position.x + size.w, position.y),
-      p01: .init(position.x, position.y + size.h),
-      p11: position + SIMD2(size))
+    self.drawQuad(texture, .positions(position, source.size), .texcoords(texture.size, source))
   }
 
   public mutating func draw(_ texture: RendererTexture2D, source: Rect<Float>, position: SIMD2<Float>,
     scale: SIMD2<Float>, color: Color<Float> = .white
   ) {
     assert(self._active != .inactive, "call to SpriteBatch.draw without calling begin")
-    let size = source.size * scale
-    self.drawQuad(texture, source,
-      p00: .init(position.x, position.y),
-      p10: .init(position.x + size.w, position.y),
-      p01: .init(position.x, position.y + size.h),
-      p11: position + SIMD2(size),
-      color: color.linear)
+    self.drawQuad(texture,
+      .positions(position, source.size * scale),
+      .texcoords(texture.size, source), color: color.linear)
   }
   public mutating func draw(_ texture: RendererTexture2D, source: Rect<Float>, position: SIMD2<Float>,
     scale: Float = 1.0, color: Color<Float> = .white
   ) {
     assert(self._active != .inactive, "call to SpriteBatch.draw without calling begin")
-    let size = source.size * scale
-    self.drawQuad(texture, source,
-      p00: .init(position.x, position.y),
-      p10: .init(position.x + size.w, position.y),
-      p01: .init(position.x, position.y + size.h),
-      p11: position + SIMD2(size),
-      color: color.linear)
+    self.drawQuad(texture,
+      .positions(position, source.size * scale),
+      .texcoords(texture.size, source), color: color.linear)
   }
 
-  //TODO: Everything
-  //public mutating func draw(_ texture: RendererTexture2D, source: Rect<Float>, position: SIMD2<Float>, scale: SIMD2<Float>, angle: Float = 0.0, origin: Point<Int> = .zero, flip: Sprite.Flip = .none, color: Color<Float> = .white, depth: Int = 0) {
-  //public mutating func draw(_ texture: RendererTexture2D, source: Rect<Float>, position: SIMD2<Float>, scale: Float = 1.0, angle: Float = 0.0, origin: Point<Int> = .zero, flip: Sprite.Flip = .none, color: Color<Float> = .white, depth: Int = 0) {
+  public mutating func draw(_ texture: RendererTexture2D, source: Rect<Float>,
+    position: SIMD2<Float>, scale: SIMD2<Float>,
+    angle: Float = 0.0, origin: SIMD2<Float> = .zero,
+    flip: Sprite.Flip = .none, color: Color<Float> = .white
+    //depth: Int = 0)
+  ) {
+    assert(self._active != .inactive, "call to SpriteBatch.draw without calling begin")
+    if source.size.w.isZero || source.size.h.isZero { return }
+    let texCoord = Quad.texcoords(texture.size, source, flip)
+    let color = color.linear
+    if angle != 0 {
+      let bias = origin / SIMD2(source.size)
+      self.drawQuad(texture, .positions(position, source.size * scale, angle, bias), texCoord, color: color)
+    } else {
+      self.drawQuad(texture, .positions(position - SIMD2(origin) * scale, source.size * scale), texCoord, color: color)
+    }
+  }
+  public mutating func draw(_ texture: RendererTexture2D, source: Rect<Float>,
+    position: SIMD2<Float>, scale: Float = 1.0,
+    angle: Float = 0.0, origin: SIMD2<Float> = .zero,
+    flip: Sprite.Flip = .none, color: Color<Float> = .white
+    //depth: Int = 0)
+  ) {
+    assert(self._active != .inactive, "call to SpriteBatch.draw without calling begin")
+    if source.size.w.isZero || source.size.h.isZero { return }
+    let texCoord = Quad.texcoords(texture.size, source, flip)
+    let color = color.linear
+    if angle != 0 {
+      let bias = origin / SIMD2(source.size)
+      self.drawQuad(texture, .positions(position, source.size * scale, angle, bias), texCoord, color: color)
+    } else {
+      self.drawQuad(texture, .positions(position - SIMD2(origin) * scale, source.size * scale), texCoord, color: color)
+    }
+  }
 
   public mutating func draw(_ texture: RendererTexture2D, source: Rect<Float>, destination: Rect<Float>?) {
     assert(self._active != .inactive, "call to SpriteBatch.draw without calling begin")
-    let dst = destination ?? self.viewport ?? Rect<Float>(self._renderer.frame)
-    self.drawQuad(texture, source,
-      p00: SIMD2(dst.left,  dst.up),   p10: SIMD2(dst.right, dst.up),
-      p01: SIMD2(dst.left,  dst.down), p11: SIMD2(dst.right, dst.down))
+    self.drawQuad(texture,
+      .positions(destination ?? self.viewport ?? Rect<Float>(self._renderer.frame)),
+      .texcoords(texture.size, source))
   }
 
   public mutating func draw(_ texture: RendererTexture2D, source: Rect<Float>, destination: Rect<Float>?,
     color: Color<Float> = .white
   ) {
     assert(self._active != .inactive, "call to SpriteBatch.draw without calling begin")
-    let dst = destination ?? self.viewport ?? Rect<Float>(self._renderer.frame)
-    self.drawQuad(texture, source,
-      p00: SIMD2(dst.left,  dst.up),   p10: SIMD2(dst.right, dst.up),
-      p01: SIMD2(dst.left,  dst.down), p11: SIMD2(dst.right, dst.down),
-      color: color.linear)
+    self.drawQuad(texture,
+      .positions(destination ?? self.viewport ?? Rect<Float>(self._renderer.frame)),
+      .texcoords(texture.size, source), color: color.linear)
   }
 
-  //TODO: Destination with rotation
+  public mutating func draw(_ texture: RendererTexture2D, source: Rect<Float>, destination: Rect<Float>?,
+    angle: Float = 0.0, center: Point<Float>? = .zero, flip: Sprite.Flip = .none, color: Color<Float> = .white
+  ) {
+    assert(self._active != .inactive, "call to SpriteBatch.draw without calling begin")
+    let dst = destination ?? self.viewport ?? Rect<Float>(self._renderer.frame)
+    if dst.size.w.isZero || dst.size.h.isZero { return }
+    let texCoord = Quad.texcoords(texture.size, source, flip)
+    let color = color.linear
+    if angle != 0 {
+      let origin = SIMD2(center ?? Point(dst.size * 0.5))
+      let bias = origin / SIMD2(dst.size)
+      self.drawQuad(texture, .positions(SIMD2(dst.origin) + origin, dst.size, angle, bias), texCoord, color: color)
+    } else {
+      self.drawQuad(texture, .positions(dst), texCoord, color: color)
+    }
+  }
 
   public mutating func draw(_ texture: RendererTexture2D, source: Rect<Float>, transform: simd_float3x3) {
     assert(self._active != .inactive, "call to SpriteBatch.draw without calling begin")
-    let w = source.size.w, h = source.size.h
-    self.drawQuad(texture, source,
-      p00: (transform * .init(0, 0, 1)).xy,
-      p10: (transform * .init(w, 0, 1)).xy,
-      p01: (transform * .init(0, h, 1)).xy,
-      p11: (transform * .init(w, h, 1)).xy)
+    self.drawQuad(texture, .positions(transform, source.size), .texcoords(texture.size, source))
   }
 
   public mutating func draw(_ texture: RendererTexture2D, source: Rect<Float>, transform: simd_float3x3,
     flip: Sprite.Flip = .none, color: Color<Float> = .white
   ) {
     assert(self._active != .inactive, "call to SpriteBatch.draw without calling begin")
-    let w = source.size.w, h = source.size.h
-    self.drawQuad(texture, source,
-      p00: (transform * .init(0, 0, 1)).xy,
-      p10: (transform * .init(w, 0, 1)).xy,
-      p01: (transform * .init(0, h, 1)).xy,
-      p11: (transform * .init(w, h, 1)).xy,
-      color: color.linear)
+    self.drawQuad(texture, .positions(transform, source.size), .texcoords(texture.size, source), color: color.linear)
   }
 
   public mutating func draw(_ texture: RendererTexture2D, vertices: [VertexType]) {
@@ -249,65 +274,17 @@ public struct SpriteBatch {
     self._instances.removeAll(keepingCapacity: true)
   }
 
-  private mutating func drawQuad(_ texture: RendererTexture2D,
-    position: SIMD2<Float>, size: Size<Float>, color: Color<Float> = .white
-  ) {
-    self.drawQuad(texture,
-      p00: position,
-      p10: .init(position.x + size.w, position.y),
-      p01: .init(position.x, position.y + size.h),
-      p11: .init(position.x + size.w, position.y + size.h), color: color)
+  fileprivate struct Quad {
+    let v00: SIMD2<Float>, v01: SIMD2<Float>
+    let v10: SIMD2<Float>, v11: SIMD2<Float>
   }
 
   private mutating func drawQuad(_ texture: RendererTexture2D,
-    position: SIMD2<Float>, angle: Float, size: Size<Float>, offset bias: SIMD2<Float>, color: Color<Float> = .white
-  ) {
-    let (tc, ts) = (cos(angle), sin(angle))
-    let rotate = matrix_float2x2(
-      .init( tc, ts),
-      .init(-ts, tc))
-    let right = SIMD2<Float>(size.w, 0) * rotate
-    let down  = SIMD2<Float>(0, size.h) * rotate
-    self.drawQuad(texture,
-      p00: position - right *       bias.x - down *      bias.y,
-      p10: position + right * (1 - bias.x) - down *      bias.y,
-      p01: position - right *       bias.x + down * (1 - bias.y),
-      p11: position + right * (1 - bias.x) + down * (1 - bias.y), color: color)
-  }
-
-  private mutating func drawQuad(_ texture: RendererTexture2D,
-    p00: SIMD2<Float>, p10: SIMD2<Float>, p01: SIMD2<Float>, p11: SIMD2<Float>,
-    flip: Sprite.Flip, color: Color<Float> = .white
-  ) {
-    let flipX = flip.contains(.x), flipY = flip.contains(.y)
-    self.drawQuad(texture, p00: p00, p10: p10, p01: p01, p11: p11,
-      t00: .init(flipX ? 1 : 0, flipY ? 0 : 1),
-      t10: .init(flipX ? 0 : 1, flipY ? 0 : 1),
-      t01: .init(flipX ? 1 : 0, flipY ? 1 : 0),
-      t11: .init(flipX ? 0 : 1, flipY ? 1 : 0),
-      color: color)
-  }
-
-  private mutating func drawQuad(_ texture: RendererTexture2D, _ source: Rect<Float>,
-    p00: SIMD2<Float>, p10: SIMD2<Float>, p01: SIMD2<Float>, p11: SIMD2<Float>,
-    color: Color<Float> = .white
-  ) {
-    let invSize = 1 / Size<Float>(texture.size)
-    let st = Extent(source) * invSize
-    self.drawQuad(texture, p00: p00, p10: p10, p01: p01, p11: p11,
-      t00: SIMD2(st.left,  st.top),    t10: SIMD2(st.right, st.top),
-      t01: SIMD2(st.left,  st.bottom), t11: SIMD2(st.right, st.bottom), color: color)
-  }
-
-  private mutating func drawQuad(_ texture: RendererTexture2D,
-    p00: SIMD2<Float>, p10: SIMD2<Float>, p01: SIMD2<Float>, p11: SIMD2<Float>,
-    t00: SIMD2<Float> = SIMD2(0, 1), t10: SIMD2<Float> = SIMD2(1, 1),
-    t01: SIMD2<Float> = SIMD2(0, 0), t11: SIMD2<Float> = SIMD2(1, 0),
-    color: Color<Float> = .white
+    _ p: Quad, _ t: Quad = .texcoordsDefault, color: Color<Float> = .white
   ) {
     let color = SIMD4(color)
     let base = self._mesh.vertexCount
-    self._mesh.insert(vertices: zip([ p00, p01, p10, p11 ], [ t00, t01, t10, t11 ])
+    self._mesh.insert(vertices: zip([ p.v00, p.v01, p.v10, p.v11 ], [ t.v00, t.v01, t.v10, t.v11 ])
       .map { .init(position: $0, texCoord: $1, color: color) })
     self._mesh.insert(indices: [ 0, 1, 2,  2, 1, 3 ], baseVertex: base)
     self._instances.append(.init(texture: texture, size: 6))
@@ -320,5 +297,80 @@ public struct SpriteBatch {
 
   internal enum ActiveState {
     case inactive, begin, active
+  }
+}
+
+fileprivate extension SpriteBatch.Quad {
+  static func positions(_ position: SIMD2<Float>, _ size: Size<Float>) -> Self {
+    .init(
+      v00: position,
+      v01: .init(position.x + size.w, position.y),
+      v10: .init(position.x,          position.y + size.h),
+      v11: .init(position.x + size.w, position.y + size.h))
+  }
+
+  static func positions(_ position: SIMD2<Float>, _ size: Size<Float>,
+    _ angle: Float, _ offset: SIMD2<Float>
+  ) -> Self {
+    let (tc, ts) = (cos(angle), sin(angle))
+    let rotate = matrix_float2x2(
+      .init( tc, ts),
+      .init(-ts, tc))
+    let right = SIMD2<Float>(size.w, 0) * rotate
+    let down  = SIMD2<Float>(0, size.h) * rotate
+    return .init (
+      v00: position - right *       offset.x - down *      offset.y,
+      v01: position + right * (1 - offset.x) - down *      offset.y,
+      v10: position - right *       offset.x + down * (1 - offset.y),
+      v11: position + right * (1 - offset.x) + down * (1 - offset.y))
+  }
+
+  static func positions(_ rect: Rect<Float>) -> Self {
+    .init(
+      v00: SIMD2(rect.left,  rect.up),   v01: SIMD2(rect.right, rect.up),
+      v10: SIMD2(rect.left,  rect.down), v11: SIMD2(rect.right, rect.down))
+  }
+
+  static func positions(_ transform: simd_float3x3, _ size: Size<Float>) -> Self {
+    let w = size.w, h = size.h
+    return .init(
+      v00: (transform * .init(0, 0, 1)).xy,
+      v01: (transform * .init(w, 0, 1)).xy,
+      v10: (transform * .init(0, h, 1)).xy,
+      v11: (transform * .init(w, h, 1)).xy)
+  }
+
+  static let texcoordsDefault = Self(
+    v00: SIMD2<Float>(0, 1), v01: SIMD2<Float>(1, 1),
+    v10: SIMD2<Float>(0, 0), v11: SIMD2<Float>(1, 0))
+
+  static func texcoords(_ flip: Sprite.Flip) -> Self {
+    let flipX = flip.contains(.x), flipY = flip.contains(.y)
+    //TODO: diag
+    return .init(
+      v00: .init(flipX ? 1 : 0, flipY ? 0 : 1),
+      v01: .init(flipX ? 0 : 1, flipY ? 0 : 1),
+      v10: .init(flipX ? 1 : 0, flipY ? 1 : 0),
+      v11: .init(flipX ? 0 : 1, flipY ? 1 : 0))
+  }
+
+  static func texcoords(_ texSize: Size<Int>, _ source: Rect<Float>) -> Self {
+    let invSize = 1 / Size<Float>(texSize)
+    let st = Extent(source) * invSize
+    return .init(
+      v00: SIMD2(st.left,  st.top),    v01: SIMD2(st.right, st.top),
+      v10: SIMD2(st.left,  st.bottom), v11: SIMD2(st.right, st.bottom))
+  }
+
+  static func texcoords(_ texSize: Size<Int>, _ source: Rect<Float>, _ flip: Sprite.Flip) -> Self {
+    let flipX = flip.contains(.x), flipY = flip.contains(.y)
+    let invSize = 1 / Size<Float>(texSize)
+    let st = Extent(source) * invSize
+    //TODO: diag
+    return .init(
+      v00: .init(flipX ? st.right : st.left, flipY ? st.bottom : st.top),
+      v01: .init(flipX ? st.left : st.right, flipY ? st.bottom : st.top),
+      v10: .init(flipX ? st.right : st.left, flipY ? st.top : st.bottom),
+      v11: .init(flipX ? st.left : st.right, flipY ? st.top : st.bottom))
   }
 }

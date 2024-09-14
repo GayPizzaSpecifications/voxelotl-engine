@@ -44,6 +44,7 @@ internal class SpriteTestGame: GameDelegate {
         origin: .init(scalar: fmod(player.rotate, 32)),
         size:   (spriteBatch.viewport?.size ?? Size<Float>(renderer.frame.size)) * 0.01),
       destination: nil,
+      angle: sin(player.rotate) * .pi * 0.1, center: nil,
       color: .init(renderer.clearColor).setAlpha(0.7))
 
     // Draw level
@@ -63,13 +64,13 @@ internal class SpriteTestGame: GameDelegate {
       angle: player.rotate, origin: .init(250, 275))
 
     // Sliding door test
-    self.spriteBatch.draw(self.texture, source: .init(
+    let doorAngle = max(sin(player.rotate * 2.6) - 0.75, 0) * .pi
+    self.spriteBatch.draw(self.texture, source: Rect<Float>(
         origin: .init(4 + cos(player.rotate / 1.2) * 4, 0),
         size:   .init(4 + cos(player.rotate / 1.3) * 4, 16)),
-      transform: .init(
-        .init( 24,    0, 0),
-        .init(  0,   12, 0),
-        .init(704, 1152, 1)), color: .red.mix(.white, 0.3))
+      position: .init(704 + 24, 1152 + 12), scale: .init(24, 12),
+      angle: doorAngle, origin: SIMD2<Float>(repeating: 1),
+      flip: .none, color: .red.mix(.white, 0.3))
 
     // Draw mouse cursor
     var mpos = Mouse.position

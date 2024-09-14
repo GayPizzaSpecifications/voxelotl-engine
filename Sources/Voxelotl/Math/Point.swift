@@ -13,6 +13,11 @@ public struct Point<T: AdditiveArithmetic & Hashable>: Hashable {
     self.y = value
   }
 
+  public init(_ size: Size<T>) {
+    self.x = size.w
+    self.y = size.h
+  }
+
   @inline(__always) public static func == (lhs: Self, rhs: Self) -> Bool { lhs.x == rhs.x && lhs.y == rhs.y }
   @inline(__always) public static func != (lhs: Self, rhs: Self) -> Bool { lhs.x != rhs.x || lhs.y != rhs.y }
 }

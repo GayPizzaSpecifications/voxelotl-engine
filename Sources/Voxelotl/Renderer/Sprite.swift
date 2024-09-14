@@ -8,6 +8,7 @@ public struct Sprite {
     public static let none: Self = Self(rawValue: 0)
     public static let x: Self    = Self(rawValue: 1 << 0)
     public static let y: Self    = Self(rawValue: 1 << 1)
+    public static let diag: Self = Self(rawValue: 1 << 2)
   }
 
   var texture: RendererTexture2D
