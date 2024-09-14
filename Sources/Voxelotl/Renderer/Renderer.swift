@@ -35,7 +35,12 @@ public class Renderer {
   private var _currentFrame = 0
 
   internal var currentFrame: Int { self._currentFrame }
+
+#if os(macOS)
   internal var isManagedStorage: Bool { self._defaultStorageMode == .storageModeManaged }
+#else
+  internal var isManagedStorage: Bool { false }
+#endif
 
   var frame: Rect<Int> { .init(origin: .zero, size: self.backBufferSize) }
   var aspectRatio: Float { self._aspectRatio }
