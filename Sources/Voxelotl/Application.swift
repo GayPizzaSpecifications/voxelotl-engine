@@ -2,6 +2,10 @@ import Foundation
 import SDL3
 import QuartzCore.CAMetalLayer
 
+#if canImport(GameController)
+import GameController
+#endif
+
 public class Application {
   private let cfg: ApplicationConfiguration
   private var del: GameDelegate!
@@ -12,12 +16,24 @@ public class Application {
   private var lastCounter: UInt64 = 0
   private var time: Duration = .zero
 
+#if os(iOS)
+  private var onScreenVirtualController: GCVirtualController? = nil
+  private var onScreenVirtualControllerShown: Bool = false
+#endif
+
   public init(delegate: GameDelegate, configuration: ApplicationConfiguration) {
     self.cfg = configuration
     self.del = delegate
   }
 
   private func initialize() -> ApplicationExecutionState {
+#if os(iOS)
+    if cfg.flags.contains(.onScreenVirtualController) {
+      onScreenVirtualController = initializeOnScreenVirtualController()
+      self.showVirtualGameController(true)
+    }
+#endif
+
     guard SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD) else {
       printErr("SDL_Init() error: \(String(cString: SDL_GetError()))")
       return .exitFailure
@@ -30,6 +46,12 @@ public class Application {
     }
     if cfg.flags.contains(.highDPI) {
       windowFlags |= SDL_WindowFlags(SDL_WINDOW_HIGH_PIXEL_DENSITY)
+    }
+    if cfg.flags.contains(.borderless) {
+      windowFlags |= SDL_WindowFlags(SDL_WINDOW_BORDERLESS)
+    }
+    if cfg.flags.contains(.fullscreen) {
+      windowFlags |= SDL_WindowFlags(SDL_WINDOW_FULLSCREEN)
     }
     window = SDL_CreateWindow(cfg.title, cfg.frame.w, cfg.frame.h, windowFlags)
     guard window != nil else {
@@ -69,6 +91,22 @@ public class Application {
     lastCounter = SDL_GetPerformanceCounter()
     return .running
   }
+
+#if os(iOS)
+  private func initializeOnScreenVirtualController() -> GCVirtualController {
+    let configuration = GCVirtualController.Configuration()
+    configuration.elements = [
+      GCInputLeftThumbstick,
+      GCInputRightThumbstick,
+      GCInputLeftTrigger,
+      GCInputRightTrigger,
+      GCInputButtonA,
+      GCInputButtonB,
+    ]
+    let controller = GCVirtualController(configuration: configuration)
+    return controller
+  }
+#endif
 
   private func deinitialize() {
     self.del = nil
@@ -141,6 +179,33 @@ public class Application {
     }
   }
 
+  private func showVirtualGameController(_ shown: Bool) {
+#if os(iOS)
+    guard let onScreenVirtualController = self.onScreenVirtualController else {
+      return
+    }
+
+    if shown {
+      if !onScreenVirtualControllerShown {
+        let semaphore = DispatchSemaphore(value: 1)
+        DispatchQueue.global().async {
+          Task.detached {
+            try? await onScreenVirtualController.connect()
+            semaphore.signal()
+          }
+        }
+        semaphore.wait()
+        onScreenVirtualControllerShown = true
+      }
+    } else {
+      if onScreenVirtualControllerShown {
+        onScreenVirtualController.disconnect()
+        onScreenVirtualControllerShown = false
+      }
+    }
+#endif
+  }
+
   private func update() -> ApplicationExecutionState {
     let deltaTime = getDeltaTime()
     time += deltaTime
@@ -201,6 +266,9 @@ public struct ApplicationConfiguration {
 
     static let resizable = Flags(rawValue: 1 << 0)
     static let highDPI = Flags(rawValue: 1 << 1)
+    static let borderless = Flags(rawValue: 1 << 2)
+    static let fullscreen = Flags(rawValue: 1 << 3)
+    static let onScreenVirtualController = Flags(rawValue: 1 << 4)
   }
 
   public enum VSyncMode: Equatable {
