@@ -13,11 +13,12 @@ public struct SpriteBatch {
   private var _mesh: RendererDynamicMesh<VertexType, IndexType>
   private var _instances = [SpriteInstance]()
 
-  public var viewport: Rect<Float>? = nil
+  public var viewport: Rect<Float>
 
-  internal init(_ renderer: Renderer) {
+  internal init(_ renderer: Renderer, _ viewport: Rect<Float>) {
     self._renderer = renderer
     self._mesh = renderer.createDynamicMesh(vertexCapacity: 4096, indexCapacity: 4096)!
+    self.viewport = viewport
   }
 
   //MARK: - Public API
@@ -89,14 +90,14 @@ public struct SpriteBatch {
 
   public mutating func draw(_ texture: RendererTexture2D, destination: Rect<Float>?) {
     assert(self._active != .inactive, "call to SpriteBatch.draw without calling begin")
-    self.drawQuad(texture, .positions(destination ?? self.viewport ?? Rect<Float>(self._renderer.frame)))
+    self.drawQuad(texture, .positions(destination ?? self.viewport))
   }
 
   public mutating func draw(_ texture: RendererTexture2D, destination: Rect<Float>?,
     angle: Float = 0.0, center: Point<Float>? = .zero, flip: Sprite.Flip = .none, color: Color<Float> = .white
   ) {
     assert(self._active != .inactive, "call to SpriteBatch.draw without calling begin")
-    let dst = destination ?? self.viewport ?? Rect<Float>(self._renderer.frame)
+    let dst = destination ?? self.viewport
     if dst.size.w.isZero || dst.size.h.isZero { return }
     let texCoord = Quad.texcoords(flip)
     let color = color.linear
@@ -182,17 +183,14 @@ public struct SpriteBatch {
 
   public mutating func draw(_ texture: RendererTexture2D, source: Rect<Float>, destination: Rect<Float>?) {
     assert(self._active != .inactive, "call to SpriteBatch.draw without calling begin")
-    self.drawQuad(texture,
-      .positions(destination ?? self.viewport ?? Rect<Float>(self._renderer.frame)),
-      .texcoords(texture.size, source))
+    self.drawQuad(texture, .positions(destination ?? self.viewport), .texcoords(texture.size, source))
   }
 
   public mutating func draw(_ texture: RendererTexture2D, source: Rect<Float>, destination: Rect<Float>?,
     color: Color<Float> = .white
   ) {
     assert(self._active != .inactive, "call to SpriteBatch.draw without calling begin")
-    self.drawQuad(texture,
-      .positions(destination ?? self.viewport ?? Rect<Float>(self._renderer.frame)),
+    self.drawQuad(texture, .positions(destination ?? self.viewport),
       .texcoords(texture.size, source), color: color.linear)
   }
 
@@ -200,7 +198,7 @@ public struct SpriteBatch {
     angle: Float = 0.0, center: Point<Float>? = .zero, flip: Sprite.Flip = .none, color: Color<Float> = .white
   ) {
     assert(self._active != .inactive, "call to SpriteBatch.draw without calling begin")
-    let dst = destination ?? self.viewport ?? Rect<Float>(self._renderer.frame)
+    let dst = destination ?? self.viewport
     if dst.size.w.isZero || dst.size.h.isZero { return }
     let texCoord = Quad.texcoords(texture.size, source, flip)
     let color = color.linear
@@ -255,7 +253,7 @@ public struct SpriteBatch {
     assert(self._instances.count > 0)
 
     if self._active == .begin {
-      self._renderer.setupBatch(blendMode: self._blendMode, frame: self.viewport ?? .init(self._renderer.frame))
+      self._renderer.setupBatch(blendMode: self._blendMode, frame: self.viewport)
       self._active = .active
     }
 

@@ -10,8 +10,6 @@ internal class SpriteTestGame: GameDelegate {
 
   func create(_ renderer: Renderer) {
     self.spriteBatch = renderer.createSpriteBatch()
-    // Uncomment to squeesh
-    //self.spriteBatch.viewport = .init(renderer.frame)
     renderer.clearColor = .init(hue: 301.2, saturation: 0.357, value: 0.488).linear // .magenta.mix(.white, 0.4).mix(.black, 0.8)
     self.texture = renderer.loadTexture(resourcePath: "test.png")
     self.wireShark = renderer.loadTexture(resourcePath: "wireshark.png")
@@ -59,7 +57,7 @@ internal class SpriteTestGame: GameDelegate {
     self.spriteBatch.draw(self.texture,
       source: .init(
         origin: .init(scalar: fmod(Float(time.total), 32)),
-        size:   (spriteBatch.viewport?.size ?? Size<Float>(renderer.frame.size)) * 0.01),
+        size:   spriteBatch.viewport.size * 0.01),
       destination: nil,
       color: .init(renderer.clearColor).setAlpha(0.7))
 
@@ -92,9 +90,9 @@ internal class SpriteTestGame: GameDelegate {
 
     // Draw mouse cursor
     var mpos = Mouse.position
-    if self.spriteBatch.viewport != nil {
+    if self.spriteBatch.viewport.size != Size<Float>(renderer.frame.size) {
       mpos /= SIMD2(Size<Float>(renderer.frame.size))
-      mpos *= SIMD2(self.spriteBatch.viewport!.size)
+      mpos *= SIMD2(self.spriteBatch.viewport.size)
     }
     let inter = 0.5 + sin(Float(time.total) * 10) * 0.5
     let color = Color<Float>.green.mix(.white, 0.3)
@@ -111,6 +109,10 @@ internal class SpriteTestGame: GameDelegate {
     }
 
     self.spriteBatch.end()
+  }
+
+  func resize(_ size: Size<Int>) {
+    self.spriteBatch.viewport.size = Size<Float>(size)
   }
 }
 

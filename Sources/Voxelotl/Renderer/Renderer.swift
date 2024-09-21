@@ -439,7 +439,7 @@ public class Renderer {
   }
 
   func createSpriteBatch() -> SpriteBatch {
-    return SpriteBatch(self)
+    return SpriteBatch(self, Rect(origin: .zero, size: Size<Float>(self.backBufferSize)))
   }
 
   internal func setupBatch(environment: Environment, camera: Camera) {
