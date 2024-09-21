@@ -81,12 +81,16 @@ internal class SpriteTestGame: GameDelegate {
 
     // Sliding door test
     let doorAngle = max(sin(player.rotate * 2.6) - 0.75, 0) * .pi
+    let doorScale = SIMD2<Float>(24, 12)
+    let doorAffine = simd_float2x2(
+      .init( cos(doorAngle) * doorScale.x, sin(doorAngle) * doorScale.y),
+      .init(-sin(doorAngle) * doorScale.x, cos(doorAngle) * doorScale.y))
+    let doorOrigin = SIMD2<Float>(repeating: 1)
+    let doorPosition = SIMD2<Float>(704 + 24, 1152 + 12) - doorOrigin * doorAffine
     self.spriteBatch.draw(self.texture, source: Rect<Float>(
         origin: .init(4 + cos(player.rotate / 1.2) * 4, 0),
         size:   .init(4 + cos(player.rotate / 1.3) * 4, 16)),
-      position: .init(704 + 24, 1152 + 12), scale: .init(24, 12),
-      angle: doorAngle, origin: SIMD2<Float>(repeating: 1),
-      flip: .none, color: .red.mix(.white, 0.3))
+      position: doorPosition, transform: doorAffine, color: .red.mix(.white, 0.3))
 
     // Draw mouse cursor
     var mpos = Mouse.position

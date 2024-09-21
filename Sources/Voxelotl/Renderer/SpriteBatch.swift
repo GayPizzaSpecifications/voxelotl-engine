@@ -124,6 +124,20 @@ public struct SpriteBatch {
       .texcoords(flip), color: color.linear)
   }
 
+  public mutating func draw(_ texture: RendererTexture2D, position: SIMD2<Float>, transform: simd_float2x2) {
+    assert(self._active != .inactive, "call to SpriteBatch.draw without calling begin")
+    self.drawQuad(texture, .positions(position, transform, Size<Float>(texture.size)))
+  }
+
+  public mutating func draw(_ texture: RendererTexture2D, position: SIMD2<Float>, transform: simd_float2x2,
+    flip: Sprite.Flip = .none, color: Color<Float> = .white
+  ) {
+    assert(self._active != .inactive, "call to SpriteBatch.draw without calling begin")
+    self.drawQuad(texture,
+      .positions(position, transform, Size<Float>(texture.size)),
+      .texcoords(flip), color: color.linear)
+  }
+
   public mutating func draw(_ texture: RendererTexture2D, source: Rect<Float>, position: SIMD2<Float>) {
     assert(self._active != .inactive, "call to SpriteBatch.draw without calling begin")
     self.drawQuad(texture, .positions(position, source.size), .texcoords(texture.size, source))
@@ -220,7 +234,25 @@ public struct SpriteBatch {
     flip: Sprite.Flip = .none, color: Color<Float> = .white
   ) {
     assert(self._active != .inactive, "call to SpriteBatch.draw without calling begin")
-    self.drawQuad(texture, .positions(transform, source.size), .texcoords(texture.size, source), color: color.linear)
+    self.drawQuad(texture,
+      .positions(transform, source.size),
+      .texcoords(texture.size, source, flip), color: color.linear)
+  }
+
+  public mutating func draw(_ texture: RendererTexture2D, source: Rect<Float>,
+    position: SIMD2<Float>, transform: simd_float2x2
+  ) {
+    assert(self._active != .inactive, "call to SpriteBatch.draw without calling begin")
+    self.drawQuad(texture, .positions(position, transform, source.size), .texcoords(texture.size, source))
+  }
+
+  public mutating func draw(_ texture: RendererTexture2D, source: Rect<Float>,
+    position: SIMD2<Float>, transform: simd_float2x2, flip: Sprite.Flip = .none, color: Color<Float> = .white
+  ) {
+    assert(self._active != .inactive, "call to SpriteBatch.draw without calling begin")
+    self.drawQuad(texture,
+      .positions(position, transform, source.size),
+      .texcoords(texture.size, source, flip), color: color.linear)
   }
 
   public mutating func draw(_ texture: RendererTexture2D, vertices: [VertexType]) {
@@ -336,6 +368,14 @@ fileprivate extension SpriteBatch.Quad {
       v01: (transform * .init(w, 0, 1)).xy,
       v10: (transform * .init(0, h, 1)).xy,
       v11: (transform * .init(w, h, 1)).xy)
+  }
+
+  static func positions(_ position: SIMD2<Float>, _ transform: simd_float2x2, _ size: Size<Float>) -> Self {
+    .init(
+      v00: position + .init(     0,      0) * transform,
+      v01: position + .init(size.w,      0) * transform,
+      v10: position + .init(     0, size.h) * transform,
+      v11: position + .init(size.w, size.h) * transform)
   }
 
   static let texcoordsDefault = Self(
