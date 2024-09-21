@@ -65,7 +65,7 @@ internal class SpriteTestGame: GameDelegate {
       self.level.set(SIMD2(mpos / TestLevel.cellScale, rounding: .down), false)
     }
 
-    self.player.update(deltaTime: dt, level: self.level)
+    self.player.update(deltaTime: min(dt, 1.0 / 30), level: self.level)
   }
 
   func draw(_ renderer: Renderer, _ time: GameTime) {
