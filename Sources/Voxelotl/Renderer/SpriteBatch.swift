@@ -64,7 +64,7 @@ public struct SpriteBatch {
       let bias = origin / SIMD2(size)
       self.drawQuad(texture, .positions(position, size * scale, angle, bias), texCoord, color: color)
     } else {
-      self.drawQuad(texture, .positions(position - origin, size * scale), texCoord, color: color)
+      self.drawQuad(texture, .positions(position - origin * scale, size * scale), texCoord, color: color)
     }
   }
 
@@ -83,7 +83,7 @@ public struct SpriteBatch {
       let bias = SIMD2(origin) / SIMD2(size)
       self.drawQuad(texture, .positions(position, size * scale, angle, bias), texCoord, color: color)
     } else {
-      self.drawQuad(texture, .positions(position, size * scale), texCoord, color: color)
+      self.drawQuad(texture, .positions(position - origin * scale, size * scale), texCoord, color: color)
     }
   }
 
@@ -345,12 +345,11 @@ fileprivate extension SpriteBatch.Quad {
     v10: SIMD2<Float>(0, 0), v11: SIMD2<Float>(1, 0))
 
   static func texcoords(_ flip: Sprite.Flip) -> Self {
-    let flipX = flip.contains(.x), flipY = flip.contains(.y)
-    //TODO: diag
+    let flipX = flip.contains(.horz), flipY = flip.contains(.vert), flipD = flip.contains(.diag)
     return .init(
       v00: .init(flipX ? 1 : 0, flipY ? 0 : 1),
-      v01: .init(flipX ? 0 : 1, flipY ? 0 : 1),
-      v10: .init(flipX ? 1 : 0, flipY ? 1 : 0),
+      v01: flipD ? .init(flipX ? 1 : 0, flipY ? 1 : 0) : .init(flipX ? 0 : 1, flipY ? 0 : 1),
+      v10: flipD ? .init(flipX ? 0 : 1, flipY ? 0 : 1) : .init(flipX ? 1 : 0, flipY ? 1 : 0),
       v11: .init(flipX ? 0 : 1, flipY ? 1 : 0))
   }
 
@@ -363,14 +362,17 @@ fileprivate extension SpriteBatch.Quad {
   }
 
   static func texcoords(_ texSize: Size<Int>, _ source: Rect<Float>, _ flip: Sprite.Flip) -> Self {
-    let flipX = flip.contains(.x), flipY = flip.contains(.y)
+    let flipX = flip.contains(.horz), flipY = flip.contains(.vert), flipD = flip.contains(.diag)
     let invSize = 1 / Size<Float>(texSize)
     let st = Extent(source) * invSize
-    //TODO: diag
     return .init(
       v00: .init(flipX ? st.right : st.left, flipY ? st.bottom : st.top),
-      v01: .init(flipX ? st.left : st.right, flipY ? st.bottom : st.top),
-      v10: .init(flipX ? st.right : st.left, flipY ? st.top : st.bottom),
+      v01: flipD
+        ?  .init(flipX ? st.right : st.left, flipY ? st.top : st.bottom)
+        :  .init(flipX ? st.left : st.right, flipY ? st.bottom : st.top),
+      v10: flipD
+        ?  .init(flipX ? st.left : st.right, flipY ? st.bottom : st.top)
+        :  .init(flipX ? st.right : st.left, flipY ? st.top : st.bottom),
       v11: .init(flipX ? st.left : st.right, flipY ? st.top : st.bottom))
   }
 }

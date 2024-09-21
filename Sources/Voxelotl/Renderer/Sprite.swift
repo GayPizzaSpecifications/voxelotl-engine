@@ -6,8 +6,8 @@ public struct Sprite {
     }
 
     public static let none: Self = Self(rawValue: 0)
-    public static let x: Self    = Self(rawValue: 1 << 0)
-    public static let y: Self    = Self(rawValue: 1 << 1)
+    public static let horz: Self = Self(rawValue: 1 << 0)
+    public static let vert: Self = Self(rawValue: 1 << 1)
     public static let diag: Self = Self(rawValue: 1 << 2)
   }
 
@@ -20,4 +20,16 @@ public struct Sprite {
   var depth: Int
   var flip: Flip
   var color: Color<Float>
+}
+
+public extension Sprite.Flip {
+  var clockwise: Self {
+    [Self](arrayLiteral: [ .vert, .diag ], [ .horz, .vert, .diag ], .diag,
+      [ .horz, .diag ], .horz, .none, [ .horz, .vert ], .vert)[Int(self.rawValue)]
+  }
+
+  var counterClockwise: Self {
+    [Self](arrayLiteral: [ .horz, .diag ], .diag, [ .horz, .vert, .diag ],
+      [ .vert, .diag ], .vert, [ .horz, .vert ], .none, .horz)[Int(self.rawValue)]
+  }
 }
