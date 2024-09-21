@@ -3,13 +3,25 @@ import simd
 
 internal class SpriteTestGame: GameDelegate {
   private var spriteBatch: SpriteBatch!
-  private var player = TestPlayer(position: .one * 10)
+  private var player = TestPlayer(position: .one * 100)
   private var texture: RendererTexture2D!
   private var wireShark: RendererTexture2D!
   private var level = TestLevel()
+  private var frame: Size<Float>!
+
+  var worldMousePosition: SIMD2<Float> {
+    var mpos = Mouse.position
+    if self.spriteBatch.viewport != .init(origin: .zero, size: self.frame) {
+      mpos /= SIMD2(self.frame)
+      mpos *= SIMD2(self.spriteBatch.viewport.size)
+      mpos += SIMD2(self.spriteBatch.viewport.origin)
+    }
+    return mpos
+  }
 
   func create(_ renderer: Renderer) {
     self.spriteBatch = renderer.createSpriteBatch()
+    self.resize(renderer.frame)
     renderer.clearColor = .init(hue: 301.2, saturation: 0.357, value: 0.488).linear // .magenta.mix(.white, 0.4).mix(.black, 0.8)
     self.texture = renderer.loadTexture(resourcePath: "test.png")
     self.wireShark = renderer.loadTexture(resourcePath: "wireshark.png")
@@ -22,13 +34,18 @@ internal class SpriteTestGame: GameDelegate {
     if let pad = GameController.current?.state {
       self.player.velocity.x = pad.leftStick.x.axisDeadzone(0.1, 0.8) * 660
       if pad.pressed(.start) {
-        self.player.position = .one * 10
+        self.player.position = .one * 100
+        self.player.velocity = .zero
       }
       if pad.pressed(.east) && player.onGround {
         self.player.velocity.y = -1000
       } else if pad.released(.east) && self.player.velocity.y < -550 {
         self.player.velocity.y = -550
       }
+    }
+    if Keyboard.pressed(.enter) {
+      self.player.position = .one * 100
+      self.player.velocity = .zero
     }
     if Keyboard.down(.left) {
       self.player.velocity.x = -660
@@ -41,10 +58,11 @@ internal class SpriteTestGame: GameDelegate {
       self.player.velocity.y = -550
     }
 
+    let mpos = self.worldMousePosition
     if Mouse.down(.left) {
-      self.level.set(SIMD2(Mouse.position / TestLevel.cellScale, rounding: .down), true)
+      self.level.set(SIMD2(mpos / TestLevel.cellScale, rounding: .down), true)
     } else if Mouse.down(.right) {
-      self.level.set(SIMD2(Mouse.position / TestLevel.cellScale, rounding: .down), false)
+      self.level.set(SIMD2(mpos / TestLevel.cellScale, rounding: .down), false)
     }
 
     self.player.update(deltaTime: dt, level: self.level)
@@ -93,11 +111,7 @@ internal class SpriteTestGame: GameDelegate {
       position: doorPosition, transform: doorAffine, color: .red.mix(.white, 0.3))
 
     // Draw mouse cursor
-    var mpos = Mouse.position
-    if self.spriteBatch.viewport.size != Size<Float>(renderer.frame.size) {
-      mpos /= SIMD2(Size<Float>(renderer.frame.size))
-      mpos *= SIMD2(self.spriteBatch.viewport.size)
-    }
+    let mpos = self.worldMousePosition
     let inter = 0.5 + sin(Float(time.total) * 10) * 0.5
     let color = Color<Float>.green.mix(.white, 0.3)
     let mesh = Mesh<VertexPosition2DTexcoordColor, UInt16>.init(vertices: [
@@ -115,8 +129,34 @@ internal class SpriteTestGame: GameDelegate {
     self.spriteBatch.end()
   }
 
-  func resize(_ size: Size<Int>) {
-    self.spriteBatch.viewport.size = Size<Float>(size)
+  func resize(_ frame: Rect<Int>) {
+    let viewport = Rect<Float>(frame)
+    self.frame = viewport.size
+
+    let rect = Rect<Float>(origin: .zero, size: .init(2560, 1440))
+    if viewport == rect {
+      self.spriteBatch.viewport = rect
+      return
+    }
+
+    let viewportRatio = viewport.w / viewport.h
+    let rectRatio = rect.w / rect.h
+    if abs(viewportRatio - rectRatio) <= .ulpOfOne * 10 { self.spriteBatch.viewport = rect }
+    else if viewportRatio > rectRatio {
+      let width = rect.h * viewportRatio
+      self.spriteBatch.viewport = .init(
+        x: (rect.w - width) * 0.5,
+        y: 0,
+        width: width,
+        height: rect.h)
+    } else {
+      let height = rect.w / viewportRatio
+      self.spriteBatch.viewport = .init(
+        x: 0,
+        y: (rect.h - height) * 0.5,
+        width: rect.w,
+        height: height)
+    }
   }
 }
 

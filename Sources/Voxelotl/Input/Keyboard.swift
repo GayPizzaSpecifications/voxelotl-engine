@@ -6,6 +6,7 @@ public class Keyboard {
     case leftBracket
     case right, left, up, down
     case space, tab
+    case enter
   }
 
   public static func down(_ key: Keys) -> Bool {
@@ -93,6 +94,7 @@ internal extension Keyboard.Keys {
     case .down:  SDLK_DOWN
     case .space: SDLK_SPACE
     case .tab:   SDLK_TAB
+    case .enter: SDLK_RETURN
     }
   }
 
@@ -131,6 +133,7 @@ internal extension Keyboard.Keys {
     case .down:  SDL_SCANCODE_DOWN
     case .space: SDL_SCANCODE_SPACE
     case .tab:   SDL_SCANCODE_TAB
+    case .enter: SDL_SCANCODE_RETURN
     }
   }
 }

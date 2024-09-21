@@ -133,7 +133,7 @@ public class Application {
     case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
       let backBufferSize = Size(Int(event.window.data1), Int(event.window.data2))
       self.renderer!.resize(size: backBufferSize)
-      self.del.resize(backBufferSize)
+      self.del.resize(.init(origin: .zero, size: backBufferSize))
       return .running
 
     default:

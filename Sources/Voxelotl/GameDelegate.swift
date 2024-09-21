@@ -3,13 +3,13 @@ public protocol GameDelegate {
   func fixedUpdate(_ time: GameTime)
   func update(_ time: GameTime)
   func draw(_ renderer: Renderer, _ time: GameTime)
-  func resize(_ size: Size<Int>)
+  func resize(_ frame: Rect<Int>)
 }
 
 public extension GameDelegate {
   func fixedUpdate(_ time: GameTime) {}
   func update(_ time: GameTime) {}
-  func resize(_ size: Size<Int>) {}
+  func resize(_ frame: Rect<Int>) {}
 }
 
 public struct GameTime {
